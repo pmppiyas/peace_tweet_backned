@@ -1,0 +1,14 @@
+model SavedDua {
+  id      String   @id @default(uuid())
+  userId  String
+  duaId   String
+  savedAt DateTime @default(now())
+
+  user    User     @relation("UserSavedDuas", fields: [userId], references: [id], onDelete: Cascade)
+  dua     Dua      @relation("DuaSavedBy", fields: [duaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, duaId])
+  @@index([userId])
+  @@index([duaId])
+  @@map("saved_duas")
+}

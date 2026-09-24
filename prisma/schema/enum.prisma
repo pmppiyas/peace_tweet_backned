@@ -1,0 +1,17 @@
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum DuaStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SourceType {
+  QURAN
+  HADITH
+  OTHER
+}

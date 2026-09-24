@@ -1,0 +1,15 @@
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  duas        Dua[]    @relation("CategoryDuas")
+
+  @@index([slug])
+  @@index([sortOrder])
+  @@map("categories")
+}

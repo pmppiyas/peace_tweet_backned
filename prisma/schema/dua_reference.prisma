@@ -1,0 +1,17 @@
+model DuaReference {
+  id        String   @id @default(uuid())
+  duaId     String
+  sourceId  String
+  reference String
+  note      String?  @db.Text
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dua       Dua      @relation("DuaReferences", fields: [duaId], references: [id], onDelete: Cascade)
+  source    Source   @relation("SourceDuaReferences", fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([duaId])
+  @@index([sourceId])
+  @@map("dua_references")
+}
