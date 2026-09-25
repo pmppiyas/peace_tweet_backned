@@ -13,17 +13,14 @@ async function bootstrap() {
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1';
   const corsOrigin = configService.get<string>('CORS_ORIGIN') || '*';
 
-  // Enable CORS
   app.enableCors({
     origin: corsOrigin === '*' ? true : corsOrigin.split(','),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Global Prefix
   app.setGlobalPrefix(apiPrefix);
 
-  // Global Validation Pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -35,10 +32,8 @@ async function bootstrap() {
     }),
   );
 
-  // Graceful shutdown
   app.enableShutdownHooks();
 
-  // Swagger Documentation Setup
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Islamic Dua Platform API')
     .setDescription(

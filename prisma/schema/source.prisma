@@ -1,10 +1,10 @@
 model Source {
-  id          String         @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
   type        SourceType
-  description String?        @db.Text
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  description String?    @db.Text
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   duaReferences DuaReference[] @relation("SourceDuaReferences")
 

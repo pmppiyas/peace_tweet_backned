@@ -1,5 +1,4 @@
-export enum SourceType {
-  QURAN = 'QURAN',
-  HADITH = 'HADITH',
-  OTHER = 'OTHER',
-}
+import { SourceType as PrismaSourceType } from '@prisma/client';
+
+export const SourceType = PrismaSourceType;
+export type SourceType = PrismaSourceType;

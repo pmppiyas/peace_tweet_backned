@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import envConfig from './config/env.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CacheModule } from './cache/cache.module';
@@ -11,6 +12,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { DuaAudiosModule } from './modules/dua-audios/dua-audios.module';
 import { DuaReferencesModule } from './modules/dua-references/dua-references.module';
 import { DuasModule } from './modules/duas/duas.module';
+import { PostsModule } from './modules/posts/posts.module';
 import { SourcesModule } from './modules/sources/sources.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -18,6 +20,7 @@ import { UsersModule } from './modules/users/users.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [envConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     PrismaModule,
@@ -31,6 +34,7 @@ import { UsersModule } from './modules/users/users.module';
     DuaReferencesModule,
     DuaAudiosModule,
     BookmarksModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

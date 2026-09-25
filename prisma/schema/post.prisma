@@ -1,0 +1,23 @@
+model Post {
+  id         String         @id @default(uuid())
+  authorId   String
+  type       PostType
+  content    String?        @db.Text
+  duaId      String?
+  visibility PostVisibility @default(PUBLIC)
+  status     PostStatus     @default(PUBLISHED)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  author     User           @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  dua        Dua?           @relation("DuaPosts", fields: [duaId], references: [id], onDelete: SetNull)
+  comments   Comment[]      @relation("PostComments")
+  reactions  Reaction[]     @relation("PostReactions")
+  savedPosts SavedPost[]    @relation("PostSaved")
+
+  @@index([authorId, createdAt])
+  @@index([type, createdAt])
+  @@index([createdAt])
+  @@index([status, visibility, createdAt])
+  @@map("posts")
+}

@@ -13,13 +13,18 @@ import {
   calculatePagination,
 } from '../../common/utils/pagination.util';
 import { PrismaService } from '../../database/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 import { CreateDuaDto } from './dto/create-dua.dto';
 import { QueryDuaDto } from './dto/query-dua.dto';
 import { UpdateDuaDto } from './dto/update-dua.dto';
 
 @Injectable()
 export class DuasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
+
 
   async create(dto: CreateDuaDto, createdById: string) {
     const categoryExists = await this.prisma.category.findUnique({
@@ -31,7 +36,7 @@ export class DuasService {
       );
     }
 
-    return this.prisma.dua.create({
+    const created = await this.prisma.dua.create({
       data: {
         title: dto.title.trim(),
         fadilah: dto.fadilah.trim(),
@@ -54,7 +59,11 @@ export class DuasService {
         },
       },
     });
+
+    await this.cache.delPattern('categories:*');
+    return created;
   }
+
 
   async findAll(
     query: QueryDuaDto,
@@ -230,7 +239,7 @@ export class DuasService {
       }
     }
 
-    return this.prisma.dua.update({
+    const updated = await this.prisma.dua.update({
       where: { id },
       data: {
         ...(dto.title && { title: dto.title.trim() }),
@@ -252,6 +261,9 @@ export class DuasService {
         audios: true,
       },
     });
+
+    await this.cache.delPattern('categories:*');
+    return updated;
   }
 
   async remove(id: string) {
@@ -264,6 +276,8 @@ export class DuasService {
       where: { id },
     });
 
+    await this.cache.delPattern('categories:*');
     return { message: `Dua '${existing.title}' deleted successfully.` };
   }
 }
+

@@ -1,16 +1,20 @@
 model User {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
-  username     String     @unique
-  email        String     @unique
+  username     String   @unique
+  email        String   @unique
   passwordHash String
-  role         Role       @default(USER)
-  refreshToken String?    @db.Text
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  role         Role     @default(USER)
+  refreshToken String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  createdDuas  Dua[]      @relation("UserCreatedDuas")
-  savedDuas    SavedDua[] @relation("UserSavedDuas")
+  createdDuas Dua[]       @relation("UserCreatedDuas")
+  savedDuas   SavedDua[]  @relation("UserSavedDuas")
+  posts       Post[]      @relation("UserPosts")
+  savedPosts  SavedPost[] @relation("UserSavedPosts")
+  reactions   Reaction[]  @relation("UserReactions")
+  comments    Comment[]   @relation("UserComments")
 
   @@index([email])
   @@index([username])

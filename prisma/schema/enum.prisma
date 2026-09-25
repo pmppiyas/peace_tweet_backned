@@ -15,3 +15,23 @@ enum SourceType {
   HADITH
   OTHER
 }
+
+enum PostType {
+  TEXT
+  DUA
+  QUESTION
+  ANNOUNCEMENT
+}
+
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+  GROUP
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  HIDDEN
+}

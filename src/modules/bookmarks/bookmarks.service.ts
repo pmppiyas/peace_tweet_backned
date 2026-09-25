@@ -131,9 +131,9 @@ export class BookmarksService {
     ]);
 
     const formattedData = items.map((item) => ({
-      savedAt: item.savedAt,
-      id: item.id,
       ...item.dua,
+      bookmarkId: item.id,
+      savedAt: item.savedAt,
       isSaved: true,
     }));
 

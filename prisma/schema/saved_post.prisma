@@ -1,0 +1,13 @@
+model SavedPost {
+  id      String   @id @default(uuid())
+  userId  String
+  postId  String
+  savedAt DateTime @default(now())
+
+  user    User     @relation("UserSavedPosts", fields: [userId], references: [id], onDelete: Cascade)
+  post    Post     @relation("PostSaved", fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId, savedAt])
+  @@map("saved_posts")
+}

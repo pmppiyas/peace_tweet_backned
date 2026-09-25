@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { SEED_ADMIN_USER, SEED_CATEGORIES, SEED_DUAS, SEED_SOURCES } from '../data/seed-data';
@@ -13,7 +16,12 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: SEED_ADMIN_USER.email },
-    update: {},
+    update: {
+      name: SEED_ADMIN_USER.name,
+      username: SEED_ADMIN_USER.username,
+      passwordHash: passwordHash,
+      role: SEED_ADMIN_USER.role,
+    },
     create: {
       name: SEED_ADMIN_USER.name,
       username: SEED_ADMIN_USER.username,
@@ -24,8 +32,9 @@ async function main() {
   });
   console.log(`✅ Admin user seeded: ${admin.email} (Username: ${admin.username})`);
   console.log(
-    `⚠️  Development credentials: Email: ${admin.email} | Password: ${SEED_ADMIN_USER.plainPassword}\n`,
+    `⚠️  Credentials: Email: ${admin.email} | Password: ${SEED_ADMIN_USER.plainPassword}\n`,
   );
+
 
   // 2. Seed Categories
   console.log('--- Seeding Categories ---');
@@ -141,6 +150,63 @@ async function main() {
         });
         console.log(`   🔊 Audio added: Reciter ${audio.reciterName}`);
       }
+
+      // Seed Feed Post for this Dua
+      const existingDuaPost = await prisma.post.findFirst({
+        where: { duaId, type: 'DUA' },
+      });
+      if (!existingDuaPost) {
+        await prisma.post.create({
+          data: {
+            authorId: admin.id,
+            type: 'DUA',
+            duaId,
+            content: `রমজান এবং দৈনন্দিন জীবনে এই গুরুত্বপূর্ণ দোয়ার আমল করুন।`,
+            visibility: 'PUBLIC',
+            status: 'PUBLISHED',
+          },
+        });
+        console.log(`   📝 Feed Post created for Dua: "${duaData.title}"`);
+      }
+    }
+  }
+
+  // 5. Seed Sample Text, Question, and Announcement Posts
+  console.log('\n--- Seeding Sample Social Feed Posts ---');
+  const samplePosts = [
+    {
+      type: 'ANNOUNCEMENT' as const,
+      content: '🕊️ PeaceTweet-এ আপনাকে স্বাগতম! এটি একটি নিরিবিলি, অর্থপূর্ণ এবং বিশুদ্ধ ইসলামিক সোশ্যাল প্ল্যাটফর্ম। এখানে প্রাত্যহিক গুরুত্বপূর্ণ দোয়া, হাদিস ও জিকির চর্চা করুন।',
+    },
+    {
+      type: 'QUESTION' as const,
+      content: 'আজকের ফজর নামাজের পর আপনি কি সকালের মাসনুন দোয়া ও আয়াতুল কুরসি পাঠ করেছেন? আপনার দৈনন্দিন জিকিরের অভ্যাস কমেন্টে শেয়ার করুন।',
+    },
+    {
+      type: 'TEXT' as const,
+      content: 'রাসূলুল্লাহ ﷺ বলেছেন: "দোয়া হলো ইবাদতের মূল।" (তিরমিজি)। আপনার যেকোনো ছোট-বড় প্রয়োজনে সর্বদা আল্লাহর দরবারে হাত তুলুন।',
+    },
+    {
+      type: 'TEXT' as const,
+      content: '"যে ব্যক্তি দিনে ১০০ বার \'সুবহানাল্লাহি ওয়া বিহামদিহী\' পাঠ করে, তার সমুদ্রের ফেনা পরিমাণ পাপ থাকলেও ক্ষমা করে দেওয়া হয়।" — সহীহ বুখারী: ৬৪০৫',
+    },
+  ];
+
+  for (const postData of samplePosts) {
+    const existing = await prisma.post.findFirst({
+      where: { content: postData.content },
+    });
+    if (!existing) {
+      await prisma.post.create({
+        data: {
+          authorId: admin.id,
+          type: postData.type,
+          content: postData.content,
+          visibility: 'PUBLIC',
+          status: 'PUBLISHED',
+        },
+      });
+      console.log(`✅ Seeded ${postData.type} Post`);
     }
   }
 

@@ -1,22 +1,23 @@
 model Dua {
-  id              String         @id @default(uuid())
+  id              String    @id @default(uuid())
   title           String
-  fadilah         String         @db.Text
-  duaBangla       String         @db.Text
-  meaningBangla   String         @db.Text
-  arabicText      String?        @db.Text
-  transliteration String?        @db.Text
+  fadilah         String    @db.Text
+  duaBangla       String    @db.Text
+  meaningBangla   String    @db.Text
+  arabicText      String?   @db.Text
+  transliteration String?   @db.Text
   categoryId      String
   createdById     String
-  status          DuaStatus      @default(DRAFT)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  status          DuaStatus @default(DRAFT)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  category        Category       @relation("CategoryDuas", fields: [categoryId], references: [id], onDelete: Restrict)
-  createdBy       User           @relation("UserCreatedDuas", fields: [createdById], references: [id], onDelete: Restrict)
-  references      DuaReference[] @relation("DuaReferences")
-  audios          DuaAudio[]     @relation("DuaAudios")
-  savedBy         SavedDua[]     @relation("DuaSavedBy")
+  category   Category       @relation("CategoryDuas", fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy  User           @relation("UserCreatedDuas", fields: [createdById], references: [id], onDelete: Restrict)
+  references DuaReference[] @relation("DuaReferences")
+  audios     DuaAudio[]     @relation("DuaAudios")
+  savedBy    SavedDua[]     @relation("DuaSavedBy")
+  posts      Post[]         @relation("DuaPosts")
 
   @@index([categoryId])
   @@index([createdById])

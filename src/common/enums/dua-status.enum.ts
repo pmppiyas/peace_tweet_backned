@@ -1,5 +1,4 @@
-export enum DuaStatus {
-  DRAFT = 'DRAFT',
-  PUBLISHED = 'PUBLISHED',
-  ARCHIVED = 'ARCHIVED',
-}
+import { DuaStatus as PrismaDuaStatus } from '@prisma/client';
+
+export const DuaStatus = PrismaDuaStatus;
+export type DuaStatus = PrismaDuaStatus;
