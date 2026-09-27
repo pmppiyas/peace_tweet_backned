@@ -1,17 +1,36 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as fs from 'fs';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 5000;
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1';
   const corsOrigin = configService.get<string>('CORS_ORIGIN') || '*';
+
+  // Ensure media upload directories exist
+  const uploadsDir = join(process.cwd(), 'uploads');
+  const videosDir = join(uploadsDir, 'videos');
+  const audiosDir = join(uploadsDir, 'audios');
+  [uploadsDir, videosDir, audiosDir].forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+
+  // Serve static assets from uploads directory
+  app.useStaticAssets(uploadsDir, {
+    prefix: '/uploads/',
+  });
+
 
   app.enableCors({
     origin: corsOrigin === '*' ? true : corsOrigin.split(','),

@@ -6,6 +6,9 @@ import { AppService } from './app.service';
 import { CacheModule } from './cache/cache.module';
 import { CommonModule } from './common/common.module';
 import { PrismaModule } from './database/prisma.module';
+import { KafkaModule } from './kafka/kafka.module';
+import { WorkersModule } from './workers/workers.module';
+
 import { AuthModule } from './modules/auth/auth.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -25,6 +28,8 @@ import { UsersModule } from './modules/users/users.module';
     }),
     PrismaModule,
     CacheModule,
+    KafkaModule,
+    WorkersModule,
     CommonModule,
     AuthModule,
     UsersModule,
@@ -40,3 +45,4 @@ import { UsersModule } from './modules/users/users.module';
   providers: [AppService],
 })
 export class AppModule {}
+

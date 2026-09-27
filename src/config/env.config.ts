@@ -20,6 +20,14 @@ export interface EnvConfig {
     password?: string;
     url?: string;
   };
+  kafka: {
+    brokers: string[];
+    clientId: string;
+    groupId: string;
+  };
+  media: {
+    uploadDir: string;
+  };
   admin: {
     email: string;
     password: string;
@@ -32,6 +40,9 @@ export const envConfig = (): EnvConfig => {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
   const defaultUsername =
     adminEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'admin';
+
+  const kafkaBrokersRaw = process.env.KAFKA_BROKERS || 'localhost:9092';
+  const kafkaBrokers = kafkaBrokersRaw.split(',').map((b) => b.trim());
 
   return {
     port: parseInt(process.env.PORT || '5000', 10),
@@ -55,6 +66,14 @@ export const envConfig = (): EnvConfig => {
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
       password: process.env.REDIS_PASSWORD || undefined,
       url: process.env.REDIS_URL || undefined,
+    },
+    kafka: {
+      brokers: kafkaBrokers,
+      clientId: process.env.KAFKA_CLIENT_ID || 'peacetweet-api',
+      groupId: process.env.KAFKA_GROUP_ID || 'peacetweet-audio-group',
+    },
+    media: {
+      uploadDir: process.env.MEDIA_UPLOAD_DIR || './uploads',
     },
     admin: {
       email: adminEmail,
