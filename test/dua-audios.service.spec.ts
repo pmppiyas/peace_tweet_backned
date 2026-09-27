@@ -1,7 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from '../src/cache/cache.service';
 import { PrismaService } from '../src/database/prisma.service';
+import { KafkaProducerService } from '../src/kafka/kafka-producer.service';
 import { DuaAudiosService } from '../src/modules/dua-audios/dua-audios.service';
 
 describe('DuaAudiosService', () => {
@@ -26,12 +28,22 @@ describe('DuaAudiosService', () => {
     remember: jest.fn((key: string, ttl: number, fetcher: () => Promise<any>) => fetcher()),
   };
 
+  const mockKafkaProducer = {
+    emit: jest.fn().mockResolvedValue(undefined),
+    registerLocalListener: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DuaAudiosService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: CacheService, useValue: mockCacheService },
+        { provide: KafkaProducerService, useValue: mockKafkaProducer },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('localhost:9092') },
+        },
       ],
     }).compile();
 

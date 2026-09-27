@@ -8,8 +8,8 @@ model DuaReference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dua       Dua      @relation("DuaReferences", fields: [duaId], references: [id], onDelete: Cascade)
-  source    Source   @relation("SourceDuaReferences", fields: [sourceId], references: [id], onDelete: Restrict)
+  dua    Dua    @relation("DuaReferences", fields: [duaId], references: [id], onDelete: Cascade)
+  source Source @relation("SourceDuaReferences", fields: [sourceId], references: [id], onDelete: Restrict)
 
   @@index([duaId])
   @@index([sourceId])

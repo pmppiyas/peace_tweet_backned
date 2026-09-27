@@ -4,8 +4,8 @@ model SavedPost {
   postId  String
   savedAt DateTime @default(now())
 
-  user    User     @relation("UserSavedPosts", fields: [userId], references: [id], onDelete: Cascade)
-  post    Post     @relation("PostSaved", fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation("UserSavedPosts", fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation("PostSaved", fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
   @@index([userId, savedAt])

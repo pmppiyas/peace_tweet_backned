@@ -8,3 +8,8 @@ export const MAX_PAGE_LIMIT = 100;
 export const DEFAULT_FRIENDS_LIMIT = 20;
 export const MAX_FRIENDS_LIMIT = 50;
 export const MIN_FRIENDS_LIMIT = 1;
+
+// Groups pagination limits
+export const DEFAULT_GROUPS_LIMIT = 20;
+export const MAX_GROUPS_LIMIT = 50;
+export const MIN_GROUPS_LIMIT = 1;

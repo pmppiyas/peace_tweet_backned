@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { GroupVisibility } from '../../common/enums/group-visibility.enum';
 import { PostStatus } from '../../common/enums/post-status.enum';
 import { PostType } from '../../common/enums/post-type.enum';
 import { PostVisibility } from '../../common/enums/post-visibility.enum';
@@ -82,9 +83,11 @@ export class PostsService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 50);
     const cursor = query.cursor;
 
+    // Global feed only returns normal feed posts (groupId == null)
     const where: any = {
       status: PostStatus.PUBLISHED,
       visibility: PostVisibility.PUBLIC,
+      groupId: null,
     };
 
     if (query.type) {
@@ -209,6 +212,11 @@ export class PostsService {
       throw new NotFoundException(`Post with ID '${id}' not found.`);
     }
 
+    // If post belongs to a group, verify group privacy access
+    if (post.groupId) {
+      await this.verifyGroupPostAccess(post.groupId, currentUser);
+    }
+
     return this.formatPostResponse(post, currentUser?.id);
   }
 
@@ -294,6 +302,10 @@ export class PostsService {
       throw new NotFoundException(`Post with ID '${postId}' not found.`);
     }
 
+    if (post.groupId) {
+      await this.verifyGroupPostAccess(post.groupId, { id: userId, email: '', role: Role.USER });
+    }
+
     await this.db.savedPost.upsert({
       where: {
         userId_postId: {
@@ -336,6 +348,10 @@ export class PostsService {
     });
     if (!post) {
       throw new NotFoundException(`Post with ID '${postId}' not found.`);
+    }
+
+    if (post.groupId) {
+      await this.verifyGroupPostAccess(post.groupId, { id: userId, email: '', role: Role.USER });
     }
 
     await this.db.reaction.upsert({
@@ -385,12 +401,16 @@ export class PostsService {
     };
   }
 
-  async getComments(postId: string, limit = 50) {
+  async getComments(postId: string, limit = 50, currentUser?: ActiveUserData) {
     const post = await this.db.post.findUnique({
       where: { id: postId },
     });
     if (!post) {
       throw new NotFoundException(`Post with ID '${postId}' not found.`);
+    }
+
+    if (post.groupId) {
+      await this.verifyGroupPostAccess(post.groupId, currentUser);
     }
 
     const comments = await this.db.comment.findMany({
@@ -431,6 +451,10 @@ export class PostsService {
       throw new NotFoundException(`Post with ID '${postId}' not found.`);
     }
 
+    if (post.groupId) {
+      await this.verifyGroupPostAccess(post.groupId, { id: userId, email: '', role: Role.USER });
+    }
+
     const comment = await this.db.comment.create({
       data: {
         postId,
@@ -469,9 +493,42 @@ export class PostsService {
     };
   }
 
+  private async verifyGroupPostAccess(
+    groupId: string,
+    currentUser?: { id?: string; role?: string; [key: string]: any },
+  ) {
+    const group = await this.db.group.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!group) return;
+
+    if (group.visibility === GroupVisibility.PRIVATE) {
+      if (!currentUser?.id) {
+        throw new ForbiddenException(
+          'You must be a member of this private group to access this post.',
+        );
+      }
+      if (currentUser.role === Role.ADMIN) return;
+
+      const member = await this.db.groupMember.findUnique({
+        where: {
+          groupId_userId: { groupId, userId: currentUser.id },
+        },
+      });
+
+      if (!member) {
+        throw new ForbiddenException(
+          'You must be a member of this private group to access this post.',
+        );
+      }
+    }
+  }
+
   private formatPostResponse(post: any, currentUserId?: string) {
     return {
       id: post.id,
+      groupId: post.groupId || null,
       type: post.type,
       content: post.content,
       createdAt: post.createdAt,

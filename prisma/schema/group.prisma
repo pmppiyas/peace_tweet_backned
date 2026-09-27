@@ -1,0 +1,54 @@
+model Group {
+  id          String          @id @default(uuid())
+  name        String
+  slug        String          @unique
+  description String?         @db.Text
+  avatarUrl   String?
+  visibility  GroupVisibility @default(PUBLIC)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  members      GroupMember[]      @relation("GroupMembers")
+  joinRequests GroupJoinRequest[] @relation("GroupJoinRequests")
+  posts        Post[]             @relation("GroupPosts")
+
+  @@index([name])
+  @@index([createdAt])
+  @@index([visibility, createdAt])
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String          @id @default(uuid())
+  groupId   String
+  userId    String
+  role      GroupMemberRole @default(MEMBER)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  group Group @relation("GroupMembers", fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation("UserGroupMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, role])
+  @@index([userId])
+  @@index([groupId, createdAt])
+  @@map("group_members")
+}
+
+model GroupJoinRequest {
+  id        String                 @id @default(uuid())
+  groupId   String
+  userId    String
+  status    GroupJoinRequestStatus @default(PENDING)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  group Group @relation("GroupJoinRequests", fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation("UserGroupJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, status, createdAt])
+  @@index([userId, status, createdAt])
+  @@map("group_join_requests")
+}

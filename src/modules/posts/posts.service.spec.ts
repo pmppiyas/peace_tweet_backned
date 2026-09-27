@@ -198,6 +198,7 @@ describe('PostsService', () => {
           where: {
             status: PostStatus.PUBLISHED,
             visibility: PostVisibility.PUBLIC,
+            groupId: null,
           },
           take: 3,
         }),

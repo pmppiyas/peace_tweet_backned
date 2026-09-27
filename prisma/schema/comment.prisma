@@ -6,8 +6,8 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  post      Post     @relation("PostComments", fields: [postId], references: [id], onDelete: Cascade)
-  author    User     @relation("UserComments", fields: [authorId], references: [id], onDelete: Cascade)
+  post   Post @relation("PostComments", fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation("UserComments", fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([postId, createdAt])
   @@map("comments")

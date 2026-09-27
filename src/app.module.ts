@@ -16,6 +16,7 @@ import { DuaAudiosModule } from './modules/dua-audios/dua-audios.module';
 import { DuaReferencesModule } from './modules/dua-references/dua-references.module';
 import { DuasModule } from './modules/duas/duas.module';
 import { FriendsModule } from './modules/friends/friends.module';
+import { GroupsModule } from './modules/groups/groups.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { SourcesModule } from './modules/sources/sources.module';
 import { UsersModule } from './modules/users/users.module';
@@ -35,6 +36,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     FriendsModule,
+    GroupsModule,
     CategoriesModule,
     SourcesModule,
     DuasModule,
