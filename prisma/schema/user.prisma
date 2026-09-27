@@ -9,12 +9,17 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  createdDuas Dua[]       @relation("UserCreatedDuas")
-  savedDuas   SavedDua[]  @relation("UserSavedDuas")
-  posts       Post[]      @relation("UserPosts")
-  savedPosts  SavedPost[] @relation("UserSavedPosts")
-  reactions   Reaction[]  @relation("UserReactions")
-  comments    Comment[]   @relation("UserComments")
+  createdDuas            Dua[]           @relation("UserCreatedDuas")
+  savedDuas              SavedDua[]      @relation("UserSavedDuas")
+  posts                  Post[]          @relation("UserPosts")
+  savedPosts             SavedPost[]     @relation("UserSavedPosts")
+  reactions              Reaction[]      @relation("UserReactions")
+  comments               Comment[]       @relation("UserComments")
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friendships            Friendship[]    @relation("UserFriendships")
+  friendOf               Friendship[]    @relation("FriendOfUser")
+
 
   @@index([email])
   @@index([username])

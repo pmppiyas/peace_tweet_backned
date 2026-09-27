@@ -54,7 +54,7 @@ export class CreateDuaDto {
   arabicText?: string;
 
   @ApiPropertyOptional({
-    example: "Bismika Allahumma amootu wa-ahya",
+    example: 'Bismika Allahumma amootu wa-ahya',
     description: 'English / Latin transliteration of the Arabic text',
   })
   @IsOptional()

@@ -1,5 +1,6 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { CacheService } from '../src/cache/cache.service';
 import { PrismaService } from '../src/database/prisma.service';
 import { CategoriesService } from '../src/modules/categories/categories.service';
 
@@ -21,11 +22,20 @@ describe('CategoriesService', () => {
     },
   };
 
+  const mockCacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+    delPattern: jest.fn().mockResolvedValue(undefined),
+    remember: jest.fn((key: string, ttl: number, fetcher: () => Promise<any>) => fetcher()),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CategoriesService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: CacheService, useValue: mockCacheService },
       ],
     }).compile();
 

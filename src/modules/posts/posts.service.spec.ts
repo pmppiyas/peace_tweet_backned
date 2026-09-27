@@ -306,11 +306,7 @@ describe('PostsService', () => {
         content: 'Updated content',
       });
 
-      const result = await service.update(
-        'post-1',
-        { content: 'Updated content' },
-        mockUser,
-      );
+      const result = await service.update('post-1', { content: 'Updated content' }, mockUser);
 
       expect(result.content).toEqual('Updated content');
     });
@@ -325,9 +321,9 @@ describe('PostsService', () => {
         role: Role.USER,
       };
 
-      await expect(
-        service.update('post-1', { content: 'Hack' }, anotherUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.update('post-1', { content: 'Hack' }, anotherUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should allow admin to delete any post', async () => {

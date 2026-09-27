@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { CacheService } from '../src/cache/cache.service';
 import { DuaStatus } from '../src/common/enums/dua-status.enum';
 import { Role } from '../src/common/enums/role.enum';
 import { PrismaService } from '../src/database/prisma.service';
@@ -26,11 +27,20 @@ describe('DuasService', () => {
     },
   };
 
+  const mockCacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+    delPattern: jest.fn().mockResolvedValue(undefined),
+    remember: jest.fn((key: string, ttl: number, fetcher: () => Promise<any>) => fetcher()),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DuasService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: CacheService, useValue: mockCacheService },
       ],
     }).compile();
 

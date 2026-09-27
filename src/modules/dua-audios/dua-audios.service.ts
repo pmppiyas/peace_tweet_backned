@@ -93,15 +93,10 @@ export class DuaAudiosService implements OnModuleInit, OnModuleDestroy {
         eachMessage: async ({ topic, partition, message }) => {
           if (!message.value) return;
           try {
-            const event: DuaAudioProcessedEvent = JSON.parse(
-              message.value.toString(),
-            );
+            const event: DuaAudioProcessedEvent = JSON.parse(message.value.toString());
             await this.handleAudioProcessed(event);
           } catch (err: any) {
-            this.logger.error(
-              `Error handling DuaAudioProcessed event: ${err.message}`,
-              err.stack,
-            );
+            this.logger.error(`Error handling DuaAudioProcessed event: ${err.message}`, err.stack);
           }
         },
       });
@@ -145,36 +140,26 @@ export class DuaAudiosService implements OnModuleInit, OnModuleDestroy {
     };
 
     // Emit event to Kafka topic
-    await this.kafkaProducer.emit(
-      KAFKA_TOPIC_DUA_AUDIO_REQUESTED,
-      duaId,
-      event,
-    );
+    await this.kafkaProducer.emit(KAFKA_TOPIC_DUA_AUDIO_REQUESTED, duaId, event);
 
-    this.logger.log(
-      `🚀 Enqueued Video-to-Audio Extraction Job '${jobId}' for Dua '${duaId}'`,
-    );
+    this.logger.log(`🚀 Enqueued Video-to-Audio Extraction Job '${jobId}' for Dua '${duaId}'`);
 
     return {
       success: true,
       jobId,
       duaId,
       status: 'PROCESSING',
-      message:
-        'Video uploaded successfully. Audio extraction job has been dispatched to Kafka.',
+      message: 'Video uploaded successfully. Audio extraction job has been dispatched to Kafka.',
       estimatedOutput: `/uploads/audios/audio_${jobId}.mp3`,
     };
   }
 
   // Handle completion of audio extraction from Kafka worker
   async handleAudioProcessed(event: DuaAudioProcessedEvent) {
-
     const { jobId, duaId, audioUrl, duration, reciterName, language, status, error } = event;
 
     if (status === 'COMPLETED') {
-      this.logger.log(
-        `💾 [Database] Saving extracted audio for Dua '${duaId}' (Job '${jobId}')`,
-      );
+      this.logger.log(`💾 [Database] Saving extracted audio for Dua '${duaId}' (Job '${jobId}')`);
 
       const createdAudio = await this.prisma.duaAudio.create({
         data: {
@@ -241,9 +226,7 @@ export class DuaAudiosService implements OnModuleInit, OnModuleDestroy {
       where: { id: audioId, duaId },
     });
     if (!audio) {
-      throw new NotFoundException(
-        `Audio with ID '${audioId}' for Dua '${duaId}' not found.`,
-      );
+      throw new NotFoundException(`Audio with ID '${audioId}' for Dua '${duaId}' not found.`);
     }
 
     const updated = await this.prisma.duaAudio.update({
@@ -266,9 +249,7 @@ export class DuaAudiosService implements OnModuleInit, OnModuleDestroy {
       where: { id: audioId, duaId },
     });
     if (!audio) {
-      throw new NotFoundException(
-        `Audio with ID '${audioId}' for Dua '${duaId}' not found.`,
-      );
+      throw new NotFoundException(`Audio with ID '${audioId}' for Dua '${duaId}' not found.`);
     }
 
     await this.prisma.duaAudio.delete({

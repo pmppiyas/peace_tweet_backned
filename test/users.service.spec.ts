@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '../src/common/enums/role.enum';
 import { PrismaService } from '../src/database/prisma.service';
+import { FriendsService } from '../src/modules/friends/friends.service';
 import { UsersService } from '../src/modules/users/users.service';
 
 describe('UsersService', () => {
@@ -14,11 +15,16 @@ describe('UsersService', () => {
     },
   };
 
+  const mockFriendsService = {
+    getRelationshipStatus: jest.fn().mockResolvedValue({ status: 'NONE', requestId: null }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: FriendsService, useValue: mockFriendsService },
       ],
     }).compile();
 
@@ -45,8 +51,6 @@ describe('UsersService', () => {
   it('should throw NotFoundException if user not found', async () => {
     mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-    await expect(service.findById('non-existing')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(service.findById('non-existing')).rejects.toThrow(NotFoundException);
   });
 });

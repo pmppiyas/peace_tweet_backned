@@ -9,12 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
@@ -33,10 +28,7 @@ export class PostsController {
   @ApiOperation({ summary: 'Create a new Post (TEXT, DUA, QUESTION, ANNOUNCEMENT)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Post created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid payload or missing duaId' })
-  async create(
-    @Body() dto: CreatePostDto,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async create(@Body() dto: CreatePostDto, @CurrentUser() user: ActiveUserData) {
     return this.postsService.create(dto, user.id);
   }
 
@@ -45,10 +37,7 @@ export class PostsController {
   @ApiOperation({ summary: 'Get single Post by ID with author, dua, stats, and viewer status' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Post details retrieved' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Post not found' })
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user?: ActiveUserData,
-  ) {
+  async findOne(@Param('id') id: string, @CurrentUser() user?: ActiveUserData) {
     return this.postsService.findOne(id, user);
   }
 
@@ -70,10 +59,7 @@ export class PostsController {
   @ApiOperation({ summary: 'Delete Post (Author or Admin only)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Post deleted successfully' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Not authorized to delete' })
-  async remove(
-    @Param('id') id: string,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async remove(@Param('id') id: string, @CurrentUser() user: ActiveUserData) {
     return this.postsService.remove(id, user);
   }
 
@@ -81,10 +67,7 @@ export class PostsController {
   @Post(':postId/save')
   @ApiOperation({ summary: 'Save/Bookmark a Feed Post' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Post saved successfully' })
-  async savePost(
-    @Param('postId') postId: string,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async savePost(@Param('postId') postId: string, @CurrentUser() user: ActiveUserData) {
     return this.postsService.savePost(postId, user.id);
   }
 
@@ -92,10 +75,7 @@ export class PostsController {
   @Delete(':postId/save')
   @ApiOperation({ summary: 'Remove a Feed Post from Saved' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Post unsaved successfully' })
-  async unsavePost(
-    @Param('postId') postId: string,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async unsavePost(@Param('postId') postId: string, @CurrentUser() user: ActiveUserData) {
     return this.postsService.unsavePost(postId, user.id);
   }
 
@@ -103,10 +83,7 @@ export class PostsController {
   @Post(':postId/reaction')
   @ApiOperation({ summary: 'React (LIKE) to a Post' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Reaction toggled/added' })
-  async react(
-    @Param('postId') postId: string,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async react(@Param('postId') postId: string, @CurrentUser() user: ActiveUserData) {
     return this.postsService.react(postId, user.id);
   }
 
@@ -114,10 +91,7 @@ export class PostsController {
   @Delete(':postId/reaction')
   @ApiOperation({ summary: 'Remove reaction from a Post' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Reaction removed' })
-  async unreact(
-    @Param('postId') postId: string,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async unreact(@Param('postId') postId: string, @CurrentUser() user: ActiveUserData) {
     return this.postsService.unreact(postId, user.id);
   }
 
@@ -125,10 +99,7 @@ export class PostsController {
   @Get(':postId/comments')
   @ApiOperation({ summary: 'Get comments for a Post' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Comments list retrieved' })
-  async getComments(
-    @Param('postId') postId: string,
-    @Query('limit') limit?: number,
-  ) {
+  async getComments(@Param('postId') postId: string, @Query('limit') limit?: number) {
     return this.postsService.getComments(postId, limit ? Number(limit) : 50);
   }
 

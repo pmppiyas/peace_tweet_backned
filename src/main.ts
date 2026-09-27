@@ -31,7 +31,6 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-
   app.enableCors({
     origin: corsOrigin === '*' ? true : corsOrigin.split(','),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

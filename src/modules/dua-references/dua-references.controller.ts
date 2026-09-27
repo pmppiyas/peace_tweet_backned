@@ -1,19 +1,5 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpStatus,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -32,10 +18,7 @@ export class DuaReferencesController {
   @ApiOperation({ summary: 'Add a new reference/hadith link to a Dua (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Reference added successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Dua not found' })
-  async create(
-    @Param('duaId') duaId: string,
-    @Body() dto: CreateDuaReferenceDto,
-  ) {
+  async create(@Param('duaId') duaId: string, @Body() dto: CreateDuaReferenceDto) {
     return this.duaReferencesService.create(duaId, dto);
   }
 
@@ -68,10 +51,7 @@ export class DuaReferencesController {
   @ApiOperation({ summary: 'Delete reference from Dua (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Reference deleted successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Reference not found' })
-  async remove(
-    @Param('duaId') duaId: string,
-    @Param('referenceId') referenceId: string,
-  ) {
+  async remove(@Param('duaId') duaId: string, @Param('referenceId') referenceId: string) {
     return this.duaReferencesService.remove(duaId, referenceId);
   }
 }

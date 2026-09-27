@@ -1,17 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DuaStatus } from '../../common/enums/dua-status.enum';
 import { Role } from '../../common/enums/role.enum';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
-import {
-  buildPaginationMeta,
-  calculatePagination,
-} from '../../common/utils/pagination.util';
+import { buildPaginationMeta, calculatePagination } from '../../common/utils/pagination.util';
 import { PrismaService } from '../../database/prisma.service';
 import { CacheService } from '../../cache/cache.service';
 import { CreateDuaDto } from './dto/create-dua.dto';
@@ -25,15 +18,12 @@ export class DuasService {
     private readonly cache: CacheService,
   ) {}
 
-
   async create(dto: CreateDuaDto, createdById: string) {
     const categoryExists = await this.prisma.category.findUnique({
       where: { id: dto.categoryId },
     });
     if (!categoryExists) {
-      throw new BadRequestException(
-        `Category with ID '${dto.categoryId}' does not exist.`,
-      );
+      throw new BadRequestException(`Category with ID '${dto.categoryId}' does not exist.`);
     }
 
     const created = await this.prisma.dua.create({
@@ -64,19 +54,14 @@ export class DuasService {
     return created;
   }
 
-
-  async findAll(
-    query: QueryDuaDto,
-    currentUser?: ActiveUserData,
-  ): Promise<PaginatedResult<any>> {
+  async findAll(query: QueryDuaDto, currentUser?: ActiveUserData): Promise<PaginatedResult<any>> {
     const { page, limit, skip, sortBy, sortOrder } = calculatePagination(query);
 
     const where: Prisma.DuaWhereInput = {};
 
     // Role-based visibility
     const isPrivileged =
-      currentUser &&
-      (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
+      currentUser && (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
 
     if (query.status) {
       if (!isPrivileged && query.status !== DuaStatus.PUBLISHED) {
@@ -165,8 +150,7 @@ export class DuasService {
 
   async findOne(id: string, currentUser?: ActiveUserData) {
     const isPrivileged =
-      currentUser &&
-      (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
+      currentUser && (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
 
     const dua = await this.prisma.dua.findUnique({
       where: { id },
@@ -233,9 +217,7 @@ export class DuasService {
         where: { id: dto.categoryId },
       });
       if (!categoryExists) {
-        throw new BadRequestException(
-          `Category with ID '${dto.categoryId}' does not exist.`,
-        );
+        throw new BadRequestException(`Category with ID '${dto.categoryId}' does not exist.`);
       }
     }
 
@@ -280,4 +262,3 @@ export class DuasService {
     return { message: `Dua '${existing.title}' deleted successfully.` };
   }
 }
-

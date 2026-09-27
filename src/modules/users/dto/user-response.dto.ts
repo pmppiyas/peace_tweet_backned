@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
+import { FriendshipStatusResponseDto } from '../../friends/dto/friend-response.dto';
 
 export class UserDto {
   @ApiProperty({ example: 'b6f6f1c4-1234-4b56-789a-0123456789ab' })
@@ -22,4 +23,9 @@ export class UserDto {
 
   @ApiProperty({ example: '2026-09-24T12:00:00.000Z' })
   updatedAt: Date;
+}
+
+export class UserProfileDto extends UserDto {
+  @ApiPropertyOptional({ type: FriendshipStatusResponseDto })
+  friendship?: FriendshipStatusResponseDto;
 }

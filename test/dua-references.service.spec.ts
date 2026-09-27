@@ -20,10 +20,7 @@ describe('DuaReferencesService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DuaReferencesService,
-        { provide: PrismaService, useValue: mockPrismaService },
-      ],
+      providers: [DuaReferencesService, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     service = module.get<DuaReferencesService>(DuaReferencesService);

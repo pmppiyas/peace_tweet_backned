@@ -1,12 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-  ValidateIf,
-} from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 import { PostStatus } from '../../../common/enums/post-status.enum';
 import { PostType } from '../../../common/enums/post-type.enum';
 import { PostVisibility } from '../../../common/enums/post-visibility.enum';

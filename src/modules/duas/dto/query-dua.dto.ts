@@ -9,7 +9,10 @@ export class QueryDuaDto extends PaginationQueryDto {
   @IsUUID('4')
   categoryId?: string;
 
-  @ApiPropertyOptional({ enum: DuaStatus, description: 'Filter by publication status (Admin/Moderator only for DRAFT/ARCHIVED)' })
+  @ApiPropertyOptional({
+    enum: DuaStatus,
+    description: 'Filter by publication status (Admin/Moderator only for DRAFT/ARCHIVED)',
+  })
   @IsOptional()
   @IsEnum(DuaStatus)
   status?: DuaStatus;

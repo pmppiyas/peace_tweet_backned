@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { CacheService } from '../src/cache/cache.service';
 import { SourceType } from '../src/common/enums/source-type.enum';
 import { PrismaService } from '../src/database/prisma.service';
 import { SourcesService } from '../src/modules/sources/sources.service';
@@ -22,11 +23,20 @@ describe('SourcesService', () => {
     },
   };
 
+  const mockCacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+    delPattern: jest.fn().mockResolvedValue(undefined),
+    remember: jest.fn((key: string, ttl: number, fetcher: () => Promise<any>) => fetcher()),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SourcesService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: CacheService, useValue: mockCacheService },
       ],
     }).compile();
 

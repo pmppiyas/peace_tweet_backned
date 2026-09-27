@@ -47,4 +47,3 @@ export class ApiErrorResponseDto {
   @ApiPropertyOptional({ example: [] })
   errors?: unknown[];
 }
-

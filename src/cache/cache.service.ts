@@ -85,12 +85,7 @@ export class CacheService {
   }
 
   // Cache-aside pattern: Gets cached value or executes fetcher, caches result, and returns
-  async remember<T>(
-
-    key: string,
-    ttlSeconds: number,
-    fetcher: () => Promise<T>,
-  ): Promise<T> {
+  async remember<T>(key: string, ttlSeconds: number, fetcher: () => Promise<T>): Promise<T> {
     const cached = await this.get<T>(key);
     if (cached !== null && cached !== undefined) {
       return cached;

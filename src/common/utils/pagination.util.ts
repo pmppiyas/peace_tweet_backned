@@ -25,11 +25,7 @@ export const calculatePagination = (options: PaginationQueryDto): CalculatedPagi
   };
 };
 
-export const buildPaginationMeta = (
-  total: number,
-  page: number,
-  limit: number,
-): PaginationMeta => {
+export const buildPaginationMeta = (total: number, page: number, limit: number): PaginationMeta => {
   const totalPages = Math.ceil(total / limit) || 1;
   return {
     total,

@@ -15,6 +15,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { DuaAudiosModule } from './modules/dua-audios/dua-audios.module';
 import { DuaReferencesModule } from './modules/dua-references/dua-references.module';
 import { DuasModule } from './modules/duas/duas.module';
+import { FriendsModule } from './modules/friends/friends.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { SourcesModule } from './modules/sources/sources.module';
 import { UsersModule } from './modules/users/users.module';
@@ -33,6 +34,7 @@ import { UsersModule } from './modules/users/users.module';
     CommonModule,
     AuthModule,
     UsersModule,
+    FriendsModule,
     CategoriesModule,
     SourcesModule,
     DuasModule,
@@ -45,4 +47,3 @@ import { UsersModule } from './modules/users/users.module';
   providers: [AppService],
 })
 export class AppModule {}
-

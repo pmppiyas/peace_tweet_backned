@@ -1,14 +1,7 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
-import {
-  buildPaginationMeta,
-  calculatePagination,
-} from '../../common/utils/pagination.util';
+import { buildPaginationMeta, calculatePagination } from '../../common/utils/pagination.util';
 import { PrismaService } from '../../database/prisma.service';
 import { QueryBookmarkDto } from './dto/query-bookmark.dto';
 
@@ -83,10 +76,7 @@ export class BookmarksService {
     return { message: 'Dua removed from your saved list.' };
   }
 
-  async getSavedDuas(
-    userId: string,
-    query: QueryBookmarkDto,
-  ): Promise<PaginatedResult<any>> {
+  async getSavedDuas(userId: string, query: QueryBookmarkDto): Promise<PaginatedResult<any>> {
     const { page, limit, skip, sortBy, sortOrder } = calculatePagination(query);
 
     const where: Prisma.SavedDuaWhereInput = {

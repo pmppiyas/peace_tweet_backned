@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -25,12 +20,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   private async connect(): Promise<void> {
     const redisUrl = this.configService.get<string>('redis.url') || process.env.REDIS_URL;
-    const host = this.configService.get<string>('redis.host') || process.env.REDIS_HOST || 'localhost';
-    const port = Number(this.configService.get<number>('redis.port') || process.env.REDIS_PORT || 6379);
+    const host =
+      this.configService.get<string>('redis.host') || process.env.REDIS_HOST || 'localhost';
+    const port = Number(
+      this.configService.get<number>('redis.port') || process.env.REDIS_PORT || 6379,
+    );
     const password =
-      this.configService.get<string>('redis.password') ||
-      process.env.REDIS_PASSWORD ||
-      undefined;
+      this.configService.get<string>('redis.password') || process.env.REDIS_PASSWORD || undefined;
 
     try {
       if (redisUrl) {
@@ -67,7 +63,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       this.client.on('error', (err) => {
         this.isConnected = false;
-        this.logger.warn(`⚠️ Redis Connection Notice: ${err.message}. (Falling back to in-memory caching)`);
+        this.logger.warn(
+          `⚠️ Redis Connection Notice: ${err.message}. (Falling back to in-memory caching)`,
+        );
       });
 
       this.client.on('close', () => {
@@ -75,7 +73,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       });
 
       await this.client.connect().catch((err) => {
-        this.logger.warn(`⚠️ Could not connect to Redis: ${err.message}. In-memory fallback will be used.`);
+        this.logger.warn(
+          `⚠️ Could not connect to Redis: ${err.message}. In-memory fallback will be used.`,
+        );
       });
     } catch (error: any) {
       this.isConnected = false;

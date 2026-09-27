@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateDuaReferenceDto } from './dto/create-dua-reference.dto';
 import { UpdateDuaReferenceDto } from './dto/update-dua-reference.dto';
@@ -23,9 +19,7 @@ export class DuaReferencesService {
       where: { id: dto.sourceId },
     });
     if (!source) {
-      throw new BadRequestException(
-        `Source with ID '${dto.sourceId}' does not exist.`,
-      );
+      throw new BadRequestException(`Source with ID '${dto.sourceId}' does not exist.`);
     }
 
     return this.prisma.duaReference.create({
@@ -59,11 +53,7 @@ export class DuaReferencesService {
     });
   }
 
-  async update(
-    duaId: string,
-    referenceId: string,
-    dto: UpdateDuaReferenceDto,
-  ) {
+  async update(duaId: string, referenceId: string, dto: UpdateDuaReferenceDto) {
     const reference = await this.prisma.duaReference.findFirst({
       where: { id: referenceId, duaId },
     });
@@ -78,9 +68,7 @@ export class DuaReferencesService {
         where: { id: dto.sourceId },
       });
       if (!source) {
-        throw new BadRequestException(
-          `Source with ID '${dto.sourceId}' does not exist.`,
-        );
+        throw new BadRequestException(`Source with ID '${dto.sourceId}' does not exist.`);
       }
     }
 

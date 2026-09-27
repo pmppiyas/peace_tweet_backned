@@ -9,12 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -70,7 +65,10 @@ export class SourcesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete source by ID (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Source deleted successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Cannot delete source with linked references' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Cannot delete source with linked references',
+  })
   async remove(@Param('id') id: string) {
     return this.sourcesService.remove(id);
   }

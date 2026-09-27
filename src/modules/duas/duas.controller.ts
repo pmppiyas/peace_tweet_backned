@@ -9,12 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -36,24 +31,17 @@ export class DuasController {
   @ApiOperation({ summary: 'Create a new Dua (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Dua created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid category or payload' })
-  async create(
-    @Body() dto: CreateDuaDto,
-    @CurrentUser() user: ActiveUserData,
-  ) {
+  async create(@Body() dto: CreateDuaDto, @CurrentUser() user: ActiveUserData) {
     return this.duasService.create(dto, user.id);
   }
 
   @Public()
   @Get()
   @ApiOperation({
-    summary:
-      'Get paginated list of Duas with search, category filtering, and status filtering',
+    summary: 'Get paginated list of Duas with search, category filtering, and status filtering',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Duas list retrieved successfully' })
-  async findAll(
-    @Query() query: QueryDuaDto,
-    @CurrentUser() user?: ActiveUserData,
-  ) {
+  async findAll(@Query() query: QueryDuaDto, @CurrentUser() user?: ActiveUserData) {
     return this.duasService.findAll(query, user);
   }
 
@@ -62,10 +50,7 @@ export class DuasController {
   @ApiOperation({ summary: 'Get Dua full details by ID with references and audio links' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Dua details retrieved' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Dua not found' })
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user?: ActiveUserData,
-  ) {
+  async findOne(@Param('id') id: string, @CurrentUser() user?: ActiveUserData) {
     return this.duasService.findOne(id, user);
   }
 

@@ -9,12 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -70,7 +65,10 @@ export class CategoriesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete category by ID (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Category deleted successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Cannot delete category containing Duas' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Cannot delete category containing Duas',
+  })
   async remove(@Param('id') id: string) {
     return this.categoriesService.remove(id);
   }

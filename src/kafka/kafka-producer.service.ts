@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Kafka, Producer, logLevel } from 'kafkajs';
 
@@ -97,7 +92,6 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   // Register local in-memory fallback listener
   registerLocalListener(topic: string, listener: LocalEventListener): void {
-
     const existing = this.localListeners.get(topic) || [];
     existing.push(listener);
     this.localListeners.set(topic, existing);
@@ -116,7 +110,10 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
         try {
           await listener(topic, key, payload);
         } catch (err: any) {
-          this.logger.error(`Error in local event handler for topic '${topic}': ${err.message}`, err.stack);
+          this.logger.error(
+            `Error in local event handler for topic '${topic}': ${err.message}`,
+            err.stack,
+          );
         }
       }
     });

@@ -21,10 +21,7 @@ describe('BookmarksService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BookmarksService,
-        { provide: PrismaService, useValue: mockPrismaService },
-      ],
+      providers: [BookmarksService, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     service = module.get<BookmarksService>(BookmarksService);
@@ -54,17 +51,13 @@ describe('BookmarksService', () => {
       mockPrismaService.dua.findUnique.mockResolvedValue({ id: 'dua-1' });
       mockPrismaService.savedDua.findUnique.mockResolvedValue({ id: 'existing-save' });
 
-      await expect(service.saveDua('user-1', 'dua-1')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.saveDua('user-1', 'dua-1')).rejects.toThrow(ConflictException);
     });
 
     it('should throw NotFoundException if Dua does not exist', async () => {
       mockPrismaService.dua.findUnique.mockResolvedValue(null);
 
-      await expect(service.saveDua('user-1', 'invalid-dua')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.saveDua('user-1', 'invalid-dua')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -80,9 +73,7 @@ describe('BookmarksService', () => {
     it('should throw NotFoundException if not in saved list', async () => {
       mockPrismaService.savedDua.findUnique.mockResolvedValue(null);
 
-      await expect(service.unsaveDua('user-1', 'dua-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.unsaveDua('user-1', 'dua-1')).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -38,7 +38,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     if (err || !user) {
-      throw err || new UnauthorizedException(info?.message || 'Unauthorized access. Token is missing or invalid.');
+      throw (
+        err ||
+        new UnauthorizedException(
+          info?.message || 'Unauthorized access. Token is missing or invalid.',
+        )
+      );
     }
     return user;
   }

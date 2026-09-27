@@ -9,11 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../database/prisma.service';
-import {
-  AuthResponseDto,
-  TokenRefreshResponseDto,
-  UserProfileDto,
-} from './dto/auth-response.dto';
+import { AuthResponseDto, TokenRefreshResponseDto, UserProfileDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -100,12 +96,7 @@ export class AuthService {
       updatedAt: user.updatedAt,
     };
 
-    const tokens = await this.generateTokens(
-      user.id,
-      user.email,
-      user.username,
-      user.role,
-    );
+    const tokens = await this.generateTokens(user.id, user.email, user.username, user.role);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
 
     return {
@@ -138,21 +129,13 @@ export class AuthService {
         throw new UnauthorizedException('Access Denied. Invalid refresh token session.');
       }
 
-      const isRefreshTokenMatching = await bcrypt.compare(
-        refreshToken,
-        user.refreshToken,
-      );
+      const isRefreshTokenMatching = await bcrypt.compare(refreshToken, user.refreshToken);
 
       if (!isRefreshTokenMatching) {
         throw new UnauthorizedException('Access Denied. Expired or rotated refresh token.');
       }
 
-      const tokens = await this.generateTokens(
-        user.id,
-        user.email,
-        user.username,
-        user.role,
-      );
+      const tokens = await this.generateTokens(user.id, user.email, user.username, user.role);
       await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
 
       return tokens;
@@ -205,10 +188,8 @@ export class AuthService {
       this.configService.get<string>('JWT_REFRESH_SECRET') ||
       'islamic-dua-refresh-secret-key-change-in-production-min-32-chars';
 
-    const accessExpiresIn =
-      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '15m';
-    const refreshExpiresIn =
-      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
+    const accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '15m';
+    const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

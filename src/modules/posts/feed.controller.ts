@@ -21,10 +21,7 @@ export class FeedController {
     status: HttpStatus.OK,
     description: 'Feed items and nextCursor retrieved successfully',
   })
-  async getFeed(
-    @Query() query: QueryFeedDto,
-    @CurrentUser() user?: ActiveUserData,
-  ) {
+  async getFeed(@Query() query: QueryFeedDto, @CurrentUser() user?: ActiveUserData) {
     return this.postsService.getFeed(query, user);
   }
 }

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import * as ffprobeInstaller from '@ffprobe-installer/ffprobe';
@@ -97,9 +92,7 @@ export class AudioWorkerService implements OnModuleInit, OnModuleDestroy {
         eachMessage: async ({ topic, partition, message }) => {
           if (!message.value) return;
           try {
-            const event: DuaAudioRequestedEvent = JSON.parse(
-              message.value.toString(),
-            );
+            const event: DuaAudioRequestedEvent = JSON.parse(message.value.toString());
             this.logger.log(
               `📥 [Worker] Received DuaAudioRequested job '${event.jobId}' for Dua '${event.duaId}'`,
             );
@@ -122,7 +115,6 @@ export class AudioWorkerService implements OnModuleInit, OnModuleDestroy {
 
   // Core Audio Extraction using FFmpeg
   async processAudioJob(event: DuaAudioRequestedEvent): Promise<void> {
-
     const { jobId, duaId, videoPath, reciterName, language } = event;
     const startTime = Date.now();
 
@@ -168,11 +160,7 @@ export class AudioWorkerService implements OnModuleInit, OnModuleDestroy {
         timestamp: new Date().toISOString(),
       };
 
-      await this.kafkaProducer.emit(
-        KAFKA_TOPIC_DUA_AUDIO_PROCESSED,
-        duaId,
-        processedEvent,
-      );
+      await this.kafkaProducer.emit(KAFKA_TOPIC_DUA_AUDIO_PROCESSED, duaId, processedEvent);
     } catch (error: any) {
       this.logger.error(
         `❌ [FFmpeg Worker] Audio extraction failed for Job '${jobId}': ${error.message}`,
@@ -193,18 +181,11 @@ export class AudioWorkerService implements OnModuleInit, OnModuleDestroy {
         timestamp: new Date().toISOString(),
       };
 
-      await this.kafkaProducer.emit(
-        KAFKA_TOPIC_DUA_AUDIO_PROCESSED,
-        duaId,
-        failedEvent,
-      );
+      await this.kafkaProducer.emit(KAFKA_TOPIC_DUA_AUDIO_PROCESSED, duaId, failedEvent);
     }
   }
 
-  private extractAudioWithFFmpeg(
-    inputPath: string,
-    outputPath: string,
-  ): Promise<void> {
+  private extractAudioWithFFmpeg(inputPath: string, outputPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .noVideo()
@@ -230,9 +211,7 @@ export class AudioWorkerService implements OnModuleInit, OnModuleDestroy {
     return new Promise((resolve) => {
       ffmpeg.ffprobe(audioPath, (err, metadata) => {
         if (err || !metadata || !metadata.format || !metadata.format.duration) {
-          this.logger.warn(
-            `Could not probe exact duration with ffprobe. Defaulting to 0.`,
-          );
+          this.logger.warn(`Could not probe exact duration with ffprobe. Defaulting to 0.`);
           return resolve(0);
         }
         const duration = Math.round(metadata.format.duration);

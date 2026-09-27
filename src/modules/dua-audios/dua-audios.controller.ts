@@ -119,12 +119,7 @@ export class DuaAudiosController {
     @Body() dto: UploadVideoDto,
     @CurrentUser() user?: ActiveUserData,
   ) {
-    return this.duaAudiosService.requestVideoAudioExtraction(
-      duaId,
-      file,
-      dto,
-      user?.id,
-    );
+    return this.duaAudiosService.requestVideoAudioExtraction(duaId, file, dto, user?.id);
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -133,10 +128,7 @@ export class DuaAudiosController {
   @ApiOperation({ summary: 'Add audio recording URL directly to a Dua (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Audio added successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Dua not found' })
-  async create(
-    @Param('duaId') duaId: string,
-    @Body() dto: CreateDuaAudioDto,
-  ) {
+  async create(@Param('duaId') duaId: string, @Body() dto: CreateDuaAudioDto) {
     return this.duaAudiosService.create(duaId, dto);
   }
 
@@ -169,10 +161,7 @@ export class DuaAudiosController {
   @ApiOperation({ summary: 'Delete audio from Dua (Admin/Moderator only)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Audio deleted successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Audio not found' })
-  async remove(
-    @Param('duaId') duaId: string,
-    @Param('audioId') audioId: string,
-  ) {
+  async remove(@Param('duaId') duaId: string, @Param('audioId') audioId: string) {
     return this.duaAudiosService.remove(duaId, audioId);
   }
 }

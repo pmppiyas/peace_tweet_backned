@@ -38,8 +38,7 @@ export interface EnvConfig {
 
 export const envConfig = (): EnvConfig => {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
-  const defaultUsername =
-    adminEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'admin';
+  const defaultUsername = adminEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'admin';
 
   const kafkaBrokersRaw = process.env.KAFKA_BROKERS || 'localhost:9092';
   const kafkaBrokers = kafkaBrokersRaw.split(',').map((b) => b.trim());
