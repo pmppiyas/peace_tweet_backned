@@ -21,6 +21,32 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
+  // Generate a URL-safe slug from a display name
+  private generateUsernameSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_-]/g, '')
+      .substring(0, 20);
+  }
+
+  // Produce a unique username, appending a random hex suffix when needed
+  private async resolveUsername(base: string): Promise<string> {
+    const slug = this.generateUsernameSlug(base) || 'user';
+    let candidate = slug;
+    let attempts = 0;
+    while (attempts < 10) {
+      const conflict = await this.prisma.user.findUnique({ where: { username: candidate } });
+      if (!conflict) return candidate;
+      const suffix = Math.random().toString(16).substring(2, 6);
+      candidate = `${slug}_${suffix}`;
+      attempts++;
+    }
+    // Fallback: full random username
+    return `user_${Math.random().toString(16).substring(2, 10)}`;
+  }
+
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     const existingEmail = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
@@ -29,11 +55,19 @@ export class AuthService {
       throw new ConflictException('Email address is already registered.');
     }
 
-    const existingUsername = await this.prisma.user.findUnique({
-      where: { username: dto.username.toLowerCase() },
-    });
-    if (existingUsername) {
-      throw new ConflictException('Username is already taken.');
+    // Use provided username or auto-generate from name
+    const resolvedUsername = dto.username
+      ? dto.username.toLowerCase().trim()
+      : await this.resolveUsername(dto.name);
+
+    // If user explicitly supplied a username, check uniqueness
+    if (dto.username) {
+      const existingUsername = await this.prisma.user.findUnique({
+        where: { username: resolvedUsername },
+      });
+      if (existingUsername) {
+        throw new ConflictException('Username is already taken.');
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -42,10 +76,13 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name.trim(),
-        username: dto.username.toLowerCase().trim(),
+        username: resolvedUsername,
         email: dto.email.toLowerCase().trim(),
         passwordHash,
         role: Role.USER,
+        avatarUrl: dto.avatarUrl?.trim() || null,
+        location: dto.location?.trim() || null,
+        bloodGroup: dto.bloodGroup || null,
       },
       select: {
         id: true,
@@ -53,6 +90,9 @@ export class AuthService {
         username: true,
         email: true,
         role: true,
+        avatarUrl: true,
+        location: true,
+        bloodGroup: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -81,6 +121,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials provided.');
     }
 
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        'This account uses social login. Please sign in with Facebook.',
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials provided.');
@@ -92,6 +138,9 @@ export class AuthService {
       username: user.username,
       email: user.email,
       role: user.role,
+      avatarUrl: user.avatarUrl,
+      location: user.location,
+      bloodGroup: user.bloodGroup,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -161,6 +210,9 @@ export class AuthService {
         username: true,
         email: true,
         role: true,
+        avatarUrl: true,
+        location: true,
+        bloodGroup: true,
         createdAt: true,
         updatedAt: true,
       },

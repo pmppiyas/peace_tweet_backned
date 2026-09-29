@@ -184,7 +184,6 @@ export class FriendsService {
     }
 
     await this.prisma.$transaction(async (tx: any) => {
-      // 1. Update friend request status to ACCEPTED
       await tx.friendRequest.update({
         where: { id: requestId },
         data: {

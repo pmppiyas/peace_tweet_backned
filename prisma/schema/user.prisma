@@ -1,13 +1,19 @@
 model User {
-  id           String   @id @default(uuid())
+  id           String      @id @default(uuid())
   name         String
-  username     String   @unique
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(USER)
-  refreshToken String?  @db.Text
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  username     String      @unique
+  email        String      @unique
+  passwordHash String?
+  facebookId   String?     @unique
+  authProvider AuthProvider @default(LOCAL)
+  role         Role        @default(USER)
+  status       UserStatus  @default(ACTIVE)
+  refreshToken String?     @db.Text
+  avatarUrl    String?
+  location     String?
+  bloodGroup   BloodGroup?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   createdDuas            Dua[]              @relation("UserCreatedDuas")
   savedDuas              SavedDua[]         @relation("UserSavedDuas")

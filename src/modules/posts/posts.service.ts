@@ -83,7 +83,6 @@ export class PostsService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 50);
     const cursor = query.cursor;
 
-    // Global feed only returns normal feed posts (groupId == null)
     const where: any = {
       status: PostStatus.PUBLISHED,
       visibility: PostVisibility.PUBLIC,
@@ -212,7 +211,6 @@ export class PostsService {
       throw new NotFoundException(`Post with ID '${id}' not found.`);
     }
 
-    // If post belongs to a group, verify group privacy access
     if (post.groupId) {
       await this.verifyGroupPostAccess(post.groupId, currentUser);
     }

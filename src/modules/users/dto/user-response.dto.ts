@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BloodGroup } from '../../../common/enums/blood-group.enum';
 import { Role } from '../../../common/enums/role.enum';
 import { FriendshipStatusResponseDto } from '../../friends/dto/friend-response.dto';
 
@@ -17,6 +18,18 @@ export class UserDto {
 
   @ApiProperty({ enum: Role, example: Role.USER })
   role: Role;
+
+  @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/avatar.png' })
+  avatarUrl?: string | null;
+
+  @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
+  location?: string | null;
+
+  @ApiPropertyOptional({ enum: BloodGroup, example: BloodGroup.A_POSITIVE })
+  bloodGroup?: BloodGroup | null;
+
+  @ApiPropertyOptional({ example: true })
+  hasPassword?: boolean;
 
   @ApiProperty({ example: '2026-09-24T12:00:00.000Z' })
   createdAt: Date;

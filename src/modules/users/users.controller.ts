@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserDto, UserProfileDto } from './dto/user-response.dto';
 import { UsersService } from './users.service';
@@ -38,6 +39,24 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ): Promise<UserDto> {
     return this.usersService.update(user.id, dto);
+  }
+
+  // Change password for current logged-in user
+  @Post('change-password')
+  @ApiOperation({ summary: 'Change password for current logged-in user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Password changed successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Current password does not match or validation failed',
+  })
+  async changePassword(
+    @CurrentUser() user: ActiveUserData,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    return this.usersService.changePassword(user.id, dto);
   }
 
   // Get public user profile by username

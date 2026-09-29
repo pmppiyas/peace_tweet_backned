@@ -19,6 +19,7 @@ import { FriendsModule } from './modules/friends/friends.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { SourcesModule } from './modules/sources/sources.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { UsersModule } from './modules/users/users.module';
     DuaAudiosModule,
     BookmarksModule,
     PostsModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

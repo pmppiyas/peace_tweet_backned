@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BloodGroup } from '../../../common/enums/blood-group.enum';
 import { Role } from '../../../common/enums/role.enum';
 
 export class UserProfileDto {
@@ -16,6 +17,15 @@ export class UserProfileDto {
 
   @ApiProperty({ enum: Role, example: Role.USER })
   role: Role;
+
+  @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/avatar.png' })
+  avatarUrl?: string | null;
+
+  @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
+  location?: string | null;
+
+  @ApiPropertyOptional({ enum: BloodGroup, example: BloodGroup.A_POSITIVE })
+  bloodGroup?: BloodGroup | null;
 
   @ApiProperty({ example: '2026-09-24T12:00:00.000Z' })
   createdAt: Date;
