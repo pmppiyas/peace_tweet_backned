@@ -34,6 +34,8 @@ export interface IUserProfile {
   avatarUrl?: string | null;
   location?: string | null;
   bloodGroup?: BloodGroup | null;
+  isDonor?: boolean;
+  donationCount?: number;
   hasPassword?: boolean;
   createdAt: Date;
   updatedAt: Date;

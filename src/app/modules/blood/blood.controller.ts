@@ -85,15 +85,25 @@ const updateRequestStatus = catchAsync(async (req: Request & { user?: any }, res
   });
 });
 
+const getDonorModeStatus = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const result = await bloodServices.getDonorModeStatus(req.user.id);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Donor status retrieved successfully',
+    data: result,
+  });
+});
+
 const toggleDonorMode = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await bloodServices.toggleDonorMode(
     req.user.id,
-    req.body.isDonor,
+    req.body?.isDonor,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: `Blood donor mode ${req.body.isDonor ? 'activated' : 'deactivated'} successfully`,
+    message: `Blood donor mode ${result.isDonor ? 'activated' : 'deactivated'} successfully`,
     data: result,
   });
 });
@@ -117,5 +127,6 @@ export const bloodController = {
   cancelDonation,
   updateRequestStatus,
   toggleDonorMode,
+  getDonorModeStatus,
   getAvailableDonors,
 };

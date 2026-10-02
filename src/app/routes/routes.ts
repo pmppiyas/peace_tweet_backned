@@ -12,6 +12,7 @@ import { feedRoutes, postsRoutes } from '../modules/posts/posts.routes';
 import { sourcesRoutes } from '../modules/sources/sources.routes';
 import { uploadsRoutes } from '../modules/uploads/uploads.routes';
 import { usersRoutes } from '../modules/users/users.routes';
+import { searchRoutes } from '../modules/search/search.routes';
 
 export const router = Router();
 
@@ -29,6 +30,7 @@ const moduleRouter = [
   { path: '/duas/:duaId/audios', route: duaAudiosRoutes },
   { path: '/duas/:duaId/references', route: duaReferencesRoutes },
   { path: '/duas', route: duasRoutes },
+  { path: '/search', route: searchRoutes },
   { path: '/', route: bookmarksRoutes },
 ];
 

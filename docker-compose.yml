@@ -59,6 +59,23 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: peacetweet_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    env_file:
+      - .env
+    environment:
+      - PORT=5000
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   peacetweet_postgres_data:
     name: peacetweet_postgres_data

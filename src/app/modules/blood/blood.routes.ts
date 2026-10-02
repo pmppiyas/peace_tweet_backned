@@ -48,6 +48,15 @@ router.patch(
 );
 
 // Donor Mode & Discovery
+router.get('/donor-mode', checkAuth(), bloodController.getDonorModeStatus);
+
+router.post(
+  '/donor-mode',
+  checkAuth(),
+  validateRequest(toggleDonorModeZodSchema),
+  bloodController.toggleDonorMode,
+);
+
 router.patch(
   '/donor-mode',
   checkAuth(),

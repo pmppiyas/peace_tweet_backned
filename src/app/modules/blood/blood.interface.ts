@@ -27,6 +27,8 @@ export interface IBloodRequestQuery {
   urgency?: BloodRequestUrgency;
   location?: string;
   search?: string;
+  requesterId?: string;
+  donorId?: string;
   cursor?: string;
   page?: string | number;
   limit?: string | number;

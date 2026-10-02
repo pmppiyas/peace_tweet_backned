@@ -4,8 +4,21 @@ import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
 import { authServices } from './auth.services';
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+};
+
 const register = catchAsync(async (req: Request, res: Response) => {
   const result = await authServices.register(req.body);
+  if (result.accessToken) {
+    res.cookie('accessToken', result.accessToken, cookieOptions);
+  }
+  if (result.refreshToken) {
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+  }
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -16,6 +29,12 @@ const register = catchAsync(async (req: Request, res: Response) => {
 
 const login = catchAsync(async (req: Request, res: Response) => {
   const result = await authServices.login(req.body);
+  if (result.accessToken) {
+    res.cookie('accessToken', result.accessToken, cookieOptions);
+  }
+  if (result.refreshToken) {
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -26,6 +45,12 @@ const login = catchAsync(async (req: Request, res: Response) => {
 
 const facebookLogin = catchAsync(async (req: Request, res: Response) => {
   const result = await authServices.facebookLogin(req.body);
+  if (result.accessToken) {
+    res.cookie('accessToken', result.accessToken, cookieOptions);
+  }
+  if (result.refreshToken) {
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -36,6 +61,12 @@ const facebookLogin = catchAsync(async (req: Request, res: Response) => {
 
 const refreshTokens = catchAsync(async (req: Request, res: Response) => {
   const result = await authServices.refreshTokens(req.body.refreshToken);
+  if (result.accessToken) {
+    res.cookie('accessToken', result.accessToken, cookieOptions);
+  }
+  if (result.refreshToken) {
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -46,6 +77,8 @@ const refreshTokens = catchAsync(async (req: Request, res: Response) => {
 
 const logout = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await authServices.logout(req.user.id);
+  res.clearCookie('accessToken', { path: '/' });
+  res.clearCookie('refreshToken', { path: '/' });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

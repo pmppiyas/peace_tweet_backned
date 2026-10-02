@@ -105,3 +105,10 @@ enum BloodRequestUrgency {
   EMERGENCY
 }
 
+enum SearchEntityType {
+  KEYWORD
+  USER
+  DUA
+  GROUP
+}
+

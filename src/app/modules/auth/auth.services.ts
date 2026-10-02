@@ -136,7 +136,7 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
   if (!user.passwordHash) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      'This account uses social login and has no password set yet. Please sign in with Facebook first and set a password in Settings.',
+      'This account uses social login and has no password set yet. Please sign in with your social account first and set a password in Settings.',
     );
   }
 
@@ -154,6 +154,8 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
     avatarUrl: user.avatarUrl,
     location: user.location,
     bloodGroup: user.bloodGroup,
+    isDonor: user.isDonor,
+    donationCount: user.donationCount,
     hasPassword: true,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -215,6 +217,8 @@ const getMe = async (userId: string): Promise<IUserProfile> => {
       avatarUrl: true,
       location: true,
       bloodGroup: true,
+      isDonor: true,
+      donationCount: true,
       passwordHash: true,
       createdAt: true,
       updatedAt: true,
@@ -333,16 +337,16 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
   }
 
   if (!user) {
-    // 3. Create new user from Facebook profile
+    // 3. Create new user from profile
     const email = fbProfile.email
       ? fbProfile.email.toLowerCase().trim()
-      : `fb_${fbProfile.id}@facebook.placeholder`;
+      : `member_${fbProfile.id}@social.placeholder`;
 
-    const resolvedUsername = await resolveUsername(fbProfile.name || 'fb_user');
+    const resolvedUsername = await resolveUsername(fbProfile.name || 'member');
 
     user = await prisma.user.create({
       data: {
-        name: fbProfile.name || 'Facebook User',
+        name: fbProfile.name || 'PeaceTweet Member',
         username: resolvedUsername,
         email,
         passwordHash: null,
@@ -363,6 +367,8 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
     avatarUrl: user.avatarUrl,
     location: user.location,
     bloodGroup: user.bloodGroup,
+    isDonor: user.isDonor,
+    donationCount: user.donationCount,
     hasPassword: Boolean(user.passwordHash),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,

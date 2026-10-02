@@ -82,6 +82,17 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
       mode: 'insensitive',
     };
   }
+  if (query.requesterId) {
+    where.requesterId = query.requesterId;
+  }
+  if (query.donorId) {
+    where.donations = {
+      some: {
+        donorId: query.donorId,
+        status: { in: ['ACCEPTED', 'COMPLETED'] },
+      },
+    };
+  }
   if (query.search) {
     const s = query.search.trim();
     where.OR = [
@@ -426,10 +437,42 @@ const updateBloodRequestStatus = async (
   return updated;
 };
 
-const toggleDonorMode = async (userId: string, isDonor: boolean) => {
+const getDonorModeStatus = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      bloodGroup: true,
+      isDonor: true,
+      donationCount: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  return user;
+};
+
+const toggleDonorMode = async (userId: string, isDonor?: boolean) => {
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, isDonor: true },
+  });
+
+  if (!currentUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const nextStatus =
+    typeof isDonor === 'boolean' ? isDonor : !currentUser.isDonor;
+
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { isDonor },
+    data: { isDonor: nextStatus },
     select: {
       id: true,
       name: true,
@@ -516,5 +559,6 @@ export const bloodServices = {
   cancelDonation,
   updateBloodRequestStatus,
   toggleDonorMode,
+  getDonorModeStatus,
   getAvailableDonors,
 };

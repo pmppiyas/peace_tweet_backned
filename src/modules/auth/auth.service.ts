@@ -123,7 +123,7 @@ export class AuthService {
 
     if (!user.passwordHash) {
       throw new UnauthorizedException(
-        'This account uses social login. Please sign in with Facebook.',
+        'This account uses social login. Please sign in with your social account.',
       );
     }
 
