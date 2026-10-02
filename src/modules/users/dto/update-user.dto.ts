@@ -38,6 +38,11 @@ export class UpdateUserDto {
   @IsString()
   avatarUrl?: string;
 
+  @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/cover.png' })
+  @IsOptional()
+  @IsString()
+  coverUrl?: string;
+
   @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
   @IsOptional()
   @IsString()
@@ -48,4 +53,21 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(BloodGroup)
   bloodGroup?: BloodGroup;
+
+  @ApiPropertyOptional({ example: 'Seeking peace and spiritual knowledge' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(250)
+  bio?: string;
+
+  @ApiPropertyOptional({ example: 'Standard Member' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  badge?: string;
+
+  @ApiPropertyOptional({ example: 'NON_VERIFIED' })
+  @IsOptional()
+  @IsString()
+  userStatus?: any;
 }

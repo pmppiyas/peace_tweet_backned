@@ -74,14 +74,34 @@ enum BloodGroup {
 }
 
 enum UserStatus {
-  ACTIVE
-  INACTIVE
-  BLOCKED
+  NON_VERIFIED
+  VERIFIED
+  PREMIUM
 }
 
 enum AuthProvider {
   LOCAL
   FACEBOOK
   GOOGLE
+}
+
+enum BloodRequestStatus {
+  PENDING
+  PARTIALLY_ACCEPTED
+  FULLY_ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+enum BloodDonationStatus {
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+enum BloodRequestUrgency {
+  REGULAR
+  URGENT
+  EMERGENCY
 }
 

@@ -25,16 +25,7 @@ export const envVar = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
-  FACEBOOK_APP_ID: process.env.META_APP_ID || process.env.FACEBOOK_APP_ID || '',
-  FACEBOOK_APP_SECRET: process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET || '',
-  FACEBOOK_REDIRECT_URI:
-    process.env.META_REDIRECT_URI ||
-    process.env.FACEBOOK_REDIRECT_URI ||
-    'http://localhost:3000/auth/facebook/callback',
-  META_APP_ID: process.env.META_APP_ID || process.env.FACEBOOK_APP_ID || '',
-  META_APP_SECRET: process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET || '',
-  META_REDIRECT_URI:
-    process.env.META_REDIRECT_URI ||
-    process.env.FACEBOOK_REDIRECT_URI ||
-    'http://localhost:3000/auth/facebook/callback',
+  META_APP_ID: process.env.META_APP_ID || '',
+  META_APP_SECRET: process.env.META_APP_SECRET || '',
+  META_REDIRECT_URI: process.env.META_REDIRECT_URI || '',
 };

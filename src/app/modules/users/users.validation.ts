@@ -11,8 +11,14 @@ export const updateUserZodSchema = z.object({
     .optional(),
   email: z.string().email().optional(),
   avatarUrl: z.string().optional().nullable(),
+  coverUrl: z.string().optional().nullable(),
   location: z.string().max(100).optional().nullable(),
   bloodGroup: z.nativeEnum(BloodGroup).optional().nullable(),
+  bio: z.string().max(250).optional().nullable(),
+  badge: z.string().max(50).optional(),
+  userStatus: z.enum(['NON_VERIFIED', 'VERIFIED', 'PREMIUM']).optional(),
+  isDonor: z.boolean().optional(),
+  donationCount: z.number().int().min(0).optional(),
 });
 
 export const changePasswordZodSchema = z.object({

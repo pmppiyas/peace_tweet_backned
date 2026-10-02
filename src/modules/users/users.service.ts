@@ -29,8 +29,12 @@ export class UsersService {
         email: true,
         role: true,
         avatarUrl: true,
+        coverUrl: true,
         location: true,
         bloodGroup: true,
+        bio: true,
+        badge: true,
+        userStatus: true,
         passwordHash: true,
         createdAt: true,
         updatedAt: true,
@@ -59,8 +63,12 @@ export class UsersService {
         email: true,
         role: true,
         avatarUrl: true,
+        coverUrl: true,
         location: true,
         bloodGroup: true,
+        bio: true,
+        badge: true,
+        userStatus: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -126,12 +134,28 @@ export class UsersService {
       updateData.avatarUrl = dto.avatarUrl?.trim() || null;
     }
 
+    if (dto.coverUrl !== undefined) {
+      updateData.coverUrl = dto.coverUrl?.trim() || null;
+    }
+
     if (dto.location !== undefined) {
       updateData.location = dto.location?.trim() || null;
     }
 
     if (dto.bloodGroup !== undefined) {
       updateData.bloodGroup = dto.bloodGroup || null;
+    }
+
+    if (dto.bio !== undefined) {
+      updateData.bio = dto.bio?.trim() || null;
+    }
+
+    if (dto.badge !== undefined) {
+      updateData.badge = dto.badge?.trim();
+    }
+
+    if (dto.userStatus !== undefined) {
+      updateData.userStatus = dto.userStatus;
     }
 
     const updated = await this.prisma.user.update({
@@ -144,8 +168,12 @@ export class UsersService {
         email: true,
         role: true,
         avatarUrl: true,
+        coverUrl: true,
         location: true,
         bloodGroup: true,
+        bio: true,
+        badge: true,
+        userStatus: true,
         passwordHash: true,
         createdAt: true,
         updatedAt: true,

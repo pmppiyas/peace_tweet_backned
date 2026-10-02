@@ -32,8 +32,8 @@ export const checkAuth =
         throw new AppError(httpStatus.BAD_REQUEST, 'User does not exist!');
       }
 
-      if (isUserExist.status === 'INACTIVE') {
-        throw new AppError(httpStatus.BAD_REQUEST, `User is ${isUserExist.status}`);
+      if ((isUserExist as any).status === 'INACTIVE' || (isUserExist as any).status === 'BLOCKED') {
+        throw new AppError(httpStatus.BAD_REQUEST, `User account is inactive`);
       }
 
       if (authRoles.length && !authRoles.includes(verifiedToken.role)) {

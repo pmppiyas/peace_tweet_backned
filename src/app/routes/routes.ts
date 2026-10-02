@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authRoutes } from '../modules/auth/auth.routes';
+import { bloodRoutes } from '../modules/blood/blood.routes';
 import { bookmarksRoutes } from '../modules/bookmarks/bookmarks.routes';
 import { categoriesRoutes } from '../modules/categories/categories.routes';
 import { duaAudiosRoutes } from '../modules/dua-audios/dua-audios.routes';
@@ -17,6 +18,7 @@ export const router = Router();
 const moduleRouter = [
   { path: '/auth', route: authRoutes },
   { path: '/users', route: usersRoutes },
+  { path: '/blood', route: bloodRoutes },
   { path: '/uploads', route: uploadsRoutes },
   { path: '/friends', route: friendsRoutes },
   { path: '/groups', route: groupsRoutes },

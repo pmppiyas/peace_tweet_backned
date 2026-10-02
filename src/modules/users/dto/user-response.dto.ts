@@ -22,11 +22,23 @@ export class UserDto {
   @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/avatar.png' })
   avatarUrl?: string | null;
 
+  @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/cover.png' })
+  coverUrl?: string | null;
+
   @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
   location?: string | null;
 
   @ApiPropertyOptional({ enum: BloodGroup, example: BloodGroup.A_POSITIVE })
   bloodGroup?: BloodGroup | null;
+
+  @ApiPropertyOptional({ example: 'Seeking peace and spiritual knowledge' })
+  bio?: string | null;
+
+  @ApiPropertyOptional({ example: 'Standard Member' })
+  badge?: string;
+
+  @ApiPropertyOptional({ example: 'NON_VERIFIED' })
+  userStatus?: string;
 
   @ApiPropertyOptional({ example: true })
   hasPassword?: boolean;

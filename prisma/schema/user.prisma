@@ -6,12 +6,17 @@ model User {
   passwordHash String?
   facebookId   String?     @unique
   authProvider AuthProvider @default(LOCAL)
-  role         Role        @default(USER)
-  status       UserStatus  @default(ACTIVE)
-  refreshToken String?     @db.Text
+  role         Role         @default(USER)
+  userStatus   UserStatus   @default(NON_VERIFIED)
+  badge        String       @default("Standard Member")
+  bio          String?      @db.Text
+  refreshToken String?      @db.Text
   avatarUrl    String?
+  coverUrl     String?
   location     String?
   bloodGroup   BloodGroup?
+  isDonor      Boolean      @default(false)
+  donationCount Int         @default(0)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -27,6 +32,8 @@ model User {
   friendOf               Friendship[]       @relation("FriendOfUser")
   groupMemberships       GroupMember[]      @relation("UserGroupMemberships")
   groupJoinRequests      GroupJoinRequest[] @relation("UserGroupJoinRequests")
+  bloodRequestsCreated   BloodRequest[]     @relation("RequesterBloodRequests")
+  bloodDonationsGiven    BloodDonation[]    @relation("UserBloodDonations")
 
   @@index([email])
   @@index([username])

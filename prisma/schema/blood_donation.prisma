@@ -1,0 +1,19 @@
+model BloodDonation {
+  id             String              @id @default(uuid())
+  bloodRequestId String
+  bloodRequest   BloodRequest        @relation("BloodRequestDonations", fields: [bloodRequestId], references: [id], onDelete: Cascade)
+
+  donorId        String
+  donor          User                @relation("UserBloodDonations", fields: [donorId], references: [id], onDelete: Cascade)
+
+  status         BloodDonationStatus @default(ACCEPTED)
+  donatedAt      DateTime?
+
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([bloodRequestId, donorId])
+  @@index([donorId])
+  @@index([bloodRequestId])
+  @@map("blood_donations")
+}
