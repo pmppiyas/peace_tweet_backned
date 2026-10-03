@@ -113,3 +113,12 @@ enum SearchEntityType {
   GROUP
 }
 
+enum NotificationType {
+  POST_LIKE
+  POST_COMMENT
+  FRIEND_REQUEST
+  FRIEND_ACCEPT
+  BLOOD_REQUEST
+  SYSTEM
+}
+

@@ -223,6 +223,7 @@ export class PostsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
         dua: {
@@ -296,6 +297,7 @@ export class PostsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
         dua: {
@@ -391,6 +393,7 @@ export class PostsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
         dua: {
@@ -516,6 +519,19 @@ export class PostsService {
       },
     });
 
+    if (post.authorId && post.authorId !== userId) {
+      await this.db.notification.create({
+        data: {
+          recipientId: post.authorId,
+          actorId: userId,
+          type: 'POST_LIKE' as any,
+          message: 'liked your post.',
+          entityId: postId,
+          entityType: 'POST',
+        },
+      }).catch((e: any) => console.error('Notification error on like:', e));
+    }
+
     const count = await this.db.reaction.count({
       where: { postId },
     });
@@ -568,6 +584,7 @@ export class PostsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
       },
@@ -583,7 +600,7 @@ export class PostsService {
         id: c.author.id,
         name: c.author.name,
         username: c.author.username,
-        avatar: null,
+        avatar: c.author.avatarUrl || null,
       },
     }));
   }
@@ -612,10 +629,24 @@ export class PostsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
       },
     });
+
+    if (post.authorId && post.authorId !== userId) {
+      await this.db.notification.create({
+        data: {
+          recipientId: post.authorId,
+          actorId: userId,
+          type: 'POST_COMMENT' as any,
+          message: `commented: "${dto.content.trim().slice(0, 50)}${dto.content.trim().length > 50 ? '...' : ''}"`,
+          entityId: postId,
+          entityType: 'POST',
+        },
+      }).catch((e: any) => console.error('Notification error on comment:', e));
+    }
 
     const commentCount = await this.db.comment.count({
       where: { postId },
@@ -631,7 +662,7 @@ export class PostsService {
           id: comment.author.id,
           name: comment.author.name,
           username: comment.author.username,
-          avatar: null,
+          avatar: comment.author.avatarUrl || null,
         },
       },
       commentCount,
@@ -719,7 +750,7 @@ export class PostsService {
         id: post.author?.id,
         name: post.author?.name,
         username: post.author?.username,
-        avatar: null,
+        avatar: post.author?.avatarUrl || null,
       },
       dua: post.dua
         ? {

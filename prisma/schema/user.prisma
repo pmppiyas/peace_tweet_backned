@@ -35,6 +35,8 @@ model User {
   bloodRequestsCreated   BloodRequest[]     @relation("RequesterBloodRequests")
   bloodDonationsGiven    BloodDonation[]    @relation("UserBloodDonations")
   searchHistories        SearchHistory[]    @relation("UserSearchHistories")
+  receivedNotifications  Notification[]     @relation("UserReceivedNotifications")
+  actorNotifications     Notification[]     @relation("UserActorNotifications")
 
   @@index([email])
   @@index([username])

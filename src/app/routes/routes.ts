@@ -13,6 +13,7 @@ import { sourcesRoutes } from '../modules/sources/sources.routes';
 import { uploadsRoutes } from '../modules/uploads/uploads.routes';
 import { usersRoutes } from '../modules/users/users.routes';
 import { searchRoutes } from '../modules/search/search.routes';
+import { notificationsRoutes } from '../modules/notifications/notifications.routes';
 
 export const router = Router();
 
@@ -25,6 +26,7 @@ const moduleRouter = [
   { path: '/groups', route: groupsRoutes },
   { path: '/posts', route: postsRoutes },
   { path: '/feed', route: feedRoutes },
+  { path: '/notifications', route: notificationsRoutes },
   { path: '/categories', route: categoriesRoutes },
   { path: '/sources', route: sourcesRoutes },
   { path: '/duas/:duaId/audios', route: duaAudiosRoutes },

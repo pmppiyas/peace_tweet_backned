@@ -121,6 +121,19 @@ export class FriendsService {
       });
     }
 
+    if (receiverId !== senderId) {
+      await this.prisma.notification.create({
+        data: {
+          recipientId: receiverId,
+          actorId: senderId,
+          type: 'FRIEND_REQUEST' as any,
+          message: 'sent you a friend request.',
+          entityId: request.id,
+          entityType: 'FRIEND_REQUEST',
+        },
+      }).catch((e: any) => console.error('Notification error on friend request:', e));
+    }
+
     return {
       id: request.id,
       status: request.status,
@@ -234,6 +247,19 @@ export class FriendsService {
         },
       });
     });
+
+    if (request.senderId !== receiverId) {
+      await this.prisma.notification.create({
+        data: {
+          recipientId: request.senderId,
+          actorId: receiverId,
+          type: 'FRIEND_ACCEPT' as any,
+          message: 'accepted your friend request.',
+          entityId: requestId,
+          entityType: 'FRIEND_REQUEST',
+        },
+      }).catch((e: any) => console.error('Notification error on friend accept:', e));
+    }
 
     return {
       success: true,

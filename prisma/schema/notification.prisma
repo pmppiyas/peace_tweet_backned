@@ -1,0 +1,19 @@
+model Notification {
+  id          String           @id @default(uuid())
+  recipientId String
+  actorId     String?
+  type        NotificationType
+  title       String?
+  message     String           @db.Text
+  entityId    String?
+  entityType  String?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  recipient   User             @relation("UserReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("UserActorNotifications", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, isRead])
+  @@index([recipientId, createdAt])
+  @@map("notifications")
+}
