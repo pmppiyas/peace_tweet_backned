@@ -87,9 +87,8 @@ export class BookmarksService {
       const search = query.search.trim();
       where.dua = {
         OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { duaBangla: { contains: search, mode: 'insensitive' } },
-          { meaningBangla: { contains: search, mode: 'insensitive' } },
+          { transliteration: { contains: search, mode: 'insensitive' } },
+          { meaning: { contains: search, mode: 'insensitive' } },
         ],
       };
     }

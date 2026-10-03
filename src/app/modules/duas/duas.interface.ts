@@ -1,23 +1,25 @@
 import { DuaStatus } from '@prisma/client';
 
 export interface ICreateDuaInput {
-  title: string;
-  fadilah: string;
-  duaBangla: string;
-  meaningBangla: string;
-  arabicText?: string;
+  title?: string;
   transliteration?: string;
-  categoryId: string;
+  meaningBangla?: string;
+  meaning?: string;
+  fadilah?: string;
+  arabicText?: string;
+  categoryId?: string;
   status?: DuaStatus;
+  duaBangla?: string; // Legacy alias mapped to transliteration
 }
 
 export interface IUpdateDuaInput {
   title?: string;
-  fadilah?: string;
-  duaBangla?: string;
-  meaningBangla?: string;
-  arabicText?: string;
   transliteration?: string;
+  meaningBangla?: string;
+  meaning?: string;
+  fadilah?: string;
+  arabicText?: string;
   categoryId?: string;
   status?: DuaStatus;
+  duaBangla?: string; // Legacy alias mapped to transliteration
 }

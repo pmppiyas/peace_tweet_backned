@@ -11,6 +11,7 @@ import { PostVisibility } from '../../common/enums/post-visibility.enum';
 import { Role } from '../../common/enums/role.enum';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 import { PrismaService } from '../../database/prisma.service';
+import { autoCategorizeDua } from '../../app/modules/duas/utils/dua-categorizer';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { QueryFeedDto } from './dto/query-feed.dto';
@@ -25,26 +26,125 @@ export class PostsService {
   }
 
   async create(dto: CreatePostDto, authorId: string) {
+    let finalDuaId: string | null = dto.duaId || null;
+    let finalBloodRequestId: string | null = dto.bloodRequestId || null;
+
     if (dto.type === PostType.DUA) {
-      if (!dto.duaId) {
-        throw new BadRequestException('duaId is required when post type is DUA.');
+      if (!finalDuaId && dto.duaData) {
+        const transliteration = (
+          dto.duaData.transliteration ||
+          (dto.duaData as any).duaBangla ||
+          ''
+        ).trim();
+        const meaning = (
+          dto.duaData.meaning ||
+          dto.duaData.meaningBangla ||
+          ''
+        ).trim();
+        const fadilah = dto.duaData.fadilah ? dto.duaData.fadilah.trim() : null;
+        const arabicText = dto.duaData.arabicText ? dto.duaData.arabicText.trim() : null;
+
+        const detectedSlug = autoCategorizeDua({
+          meaning,
+          transliteration,
+          fadilah,
+        });
+
+        let category = await this.prisma.category.findUnique({
+          where: { slug: detectedSlug },
+        });
+        if (!category) {
+          category = await this.prisma.category.findUnique({
+            where: { slug: 'others' },
+          });
+        }
+        if (!category) {
+          category = await this.prisma.category.findFirst();
+        }
+
+        const createdDua = await this.prisma.dua.create({
+          data: {
+            transliteration: transliteration || null,
+            meaning,
+            fadilah,
+            arabicText,
+            categoryId: category!.id,
+            createdById: authorId,
+            status: 'PUBLISHED',
+          },
+        });
+        finalDuaId = createdDua.id;
+      } else if (finalDuaId) {
+        const duaExists = await this.prisma.dua.findUnique({
+          where: { id: finalDuaId },
+        });
+        if (!duaExists) {
+          throw new NotFoundException(`Dua with ID '${finalDuaId}' does not exist.`);
+        }
+      } else {
+        throw new BadRequestException('Either duaId or duaData is required when post type is DUA.');
       }
-      const duaExists = await this.prisma.dua.findUnique({
-        where: { id: dto.duaId },
-      });
-      if (!duaExists) {
-        throw new NotFoundException(`Dua with ID '${dto.duaId}' does not exist.`);
+    } else if (dto.type === PostType.BLOOD_REQUEST) {
+      if (!finalBloodRequestId && dto.bloodRequestData) {
+        const bData = dto.bloodRequestData;
+        const createdBloodRequest = await this.prisma.bloodRequest.create({
+          data: {
+            requesterId: authorId,
+            patientName: bData.patientName.trim(),
+            patientAge: bData.patientAge ? Number(bData.patientAge) : null,
+            problem: bData.problem?.trim() || null,
+            bloodGroup: bData.bloodGroup,
+            units: bData.units ? Number(bData.units) : 1,
+            hospitalName: bData.hospitalName.trim(),
+            hospitalAddress: bData.hospitalAddress?.trim() || null,
+            location: bData.location.trim(),
+            contactNumber: bData.contactNumber.trim(),
+            alternateContact: bData.alternateContact?.trim() || null,
+            neededDate: new Date(bData.neededDate),
+            urgency: bData.urgency || 'REGULAR',
+            note: bData.note?.trim() || null,
+            forMyself: Boolean(bData.forMyself),
+          },
+        });
+        finalBloodRequestId = createdBloodRequest.id;
+      } else if (finalBloodRequestId) {
+        const reqExists = await this.prisma.bloodRequest.findUnique({
+          where: { id: finalBloodRequestId },
+        });
+        if (!reqExists) {
+          throw new NotFoundException(`Blood Request with ID '${finalBloodRequestId}' does not exist.`);
+        }
+      } else {
+        throw new BadRequestException(
+          'Either bloodRequestId or bloodRequestData is required for blood request posts.',
+        );
       }
-    } else if (!dto.content || !dto.content.trim()) {
-      throw new BadRequestException(`Content is required for ${dto.type} posts.`);
+    }
+    
+    const normalizedMediaUrls: string[] = Array.isArray(dto.mediaUrls)
+      ? dto.mediaUrls.filter((u: any) => typeof u === 'string' && u.trim().length > 0)
+      : typeof dto.mediaUrls === 'string' && (dto.mediaUrls as string).trim()
+      ? [(dto.mediaUrls as string).trim()]
+      : [];
+
+    if (
+      dto.type !== PostType.DUA &&
+      dto.type !== PostType.BLOOD_REQUEST &&
+      !dto.content?.trim() &&
+      normalizedMediaUrls.length === 0
+    ) {
+      throw new BadRequestException(`Content or photo is required for ${dto.type} posts.`);
     }
 
     const post = await this.db.post.create({
       data: {
         authorId,
         type: dto.type,
-        content: dto.content?.trim(),
-        duaId: dto.duaId || null,
+        content: dto.content?.trim() || null,
+        mediaUrls: normalizedMediaUrls,
+        mediaLayout: dto.mediaLayout === 'SWIPE' ? 'SWIPE' : 'COLLAGE',
+        duaId: finalDuaId,
+        bloodRequestId: finalBloodRequestId,
         visibility: dto.visibility ?? PostVisibility.PUBLIC,
         status: dto.status ?? PostStatus.PUBLISHED,
       },
@@ -54,6 +154,7 @@ export class PostsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
         dua: {
@@ -67,10 +168,24 @@ export class PostsService {
             audios: true,
           },
         },
+        bloodRequest: {
+          include: {
+            requester: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            donations: true,
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
+            savedPosts: true,
           },
         },
       },
@@ -120,10 +235,24 @@ export class PostsService {
             audios: true,
           },
         },
+        bloodRequest: {
+          include: {
+            requester: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            donations: true,
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
+            savedPosts: true,
           },
         },
         reactions: currentUser?.id
@@ -179,10 +308,24 @@ export class PostsService {
             audios: true,
           },
         },
+        bloodRequest: {
+          include: {
+            requester: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            donations: true,
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
+            savedPosts: true,
           },
         },
         reactions: currentUser?.id
@@ -235,6 +378,8 @@ export class PostsService {
       where: { id },
       data: {
         content: dto.content !== undefined ? dto.content.trim() : undefined,
+        mediaUrls: dto.mediaUrls !== undefined ? dto.mediaUrls : undefined,
+        mediaLayout: dto.mediaLayout !== undefined ? dto.mediaLayout : undefined,
         visibility: dto.visibility,
         status: dto.status,
       },
@@ -529,6 +674,41 @@ export class PostsService {
       groupId: post.groupId || null,
       type: post.type,
       content: post.content,
+      mediaUrls: post.mediaUrls || [],
+      mediaLayout: post.mediaLayout || 'COLLAGE',
+      bloodRequestId: post.bloodRequestId || null,
+      bloodRequest: post.bloodRequest
+        ? {
+            id: post.bloodRequest.id,
+            requesterId: post.bloodRequest.requesterId,
+            forMyself: post.bloodRequest.forMyself,
+            patientName: post.bloodRequest.patientName,
+            patientAge: post.bloodRequest.patientAge,
+            problem: post.bloodRequest.problem,
+            bloodGroup: post.bloodRequest.bloodGroup,
+            units: post.bloodRequest.units,
+            unitsFulfilled: post.bloodRequest.unitsFulfilled,
+            hospitalName: post.bloodRequest.hospitalName,
+            hospitalAddress: post.bloodRequest.hospitalAddress,
+            location: post.bloodRequest.location,
+            contactNumber: post.bloodRequest.contactNumber,
+            alternateContact: post.bloodRequest.alternateContact,
+            neededDate: post.bloodRequest.neededDate,
+            urgency: post.bloodRequest.urgency,
+            status: post.bloodRequest.status,
+            note: post.bloodRequest.note,
+            createdAt: post.bloodRequest.createdAt,
+            requester: post.bloodRequest.requester
+              ? {
+                  id: post.bloodRequest.requester.id,
+                  name: post.bloodRequest.requester.name,
+                  username: post.bloodRequest.requester.username,
+                  avatarUrl: post.bloodRequest.requester.avatarUrl,
+                }
+              : null,
+            donations: post.bloodRequest.donations || [],
+          }
+        : null,
       createdAt: post.createdAt,
       visibility: post.visibility,
       status: post.status,
@@ -541,12 +721,11 @@ export class PostsService {
       dua: post.dua
         ? {
             id: post.dua.id,
-            title: post.dua.title,
             fadilah: post.dua.fadilah,
-            duaBangla: post.dua.duaBangla,
-            meaningBangla: post.dua.meaningBangla,
-            arabicText: post.dua.arabicText,
             transliteration: post.dua.transliteration,
+            meaning: post.dua.meaning,
+            meaningBangla: post.dua.meaning,
+            arabicText: post.dua.arabicText,
             category: post.dua.category
               ? {
                   id: post.dua.category.id,
@@ -575,6 +754,8 @@ export class PostsService {
       stats: {
         reactionCount: post._count?.reactions || 0,
         commentCount: post._count?.comments || 0,
+        saveCount: post._count?.savedPosts || 0,
+        shareCount: 0,
       },
       viewer: {
         hasReacted: Array.isArray(post.reactions) ? post.reactions.length > 0 : false,

@@ -1187,12 +1187,10 @@ export class GroupsService {
       dua: post.dua
         ? {
             id: post.dua.id,
-            title: post.dua.title,
             fadilah: post.dua.fadilah,
-            duaBangla: post.dua.duaBangla,
+            transliteration: post.dua.transliteration,
             meaningBangla: post.dua.meaningBangla,
             arabicText: post.dua.arabicText,
-            transliteration: post.dua.transliteration,
             category: post.dua.category
               ? {
                   id: post.dua.category.id,

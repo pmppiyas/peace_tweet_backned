@@ -21,6 +21,7 @@ model BloodRequest {
   note             String?              @db.Text
 
   donations        BloodDonation[]      @relation("BloodRequestDonations")
+  posts            Post[]               @relation("BloodRequestPosts")
 
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt

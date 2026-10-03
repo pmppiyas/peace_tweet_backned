@@ -84,6 +84,19 @@ const uploadImage = async (
   }
 };
 
+const uploadMultipleImages = async (
+  files: Express.Multer.File[] | undefined,
+  folder = 'peacetweet/uploads',
+): Promise<IUploadResult[]> => {
+  if (!files || files.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No image files provided for upload');
+  }
+
+  const results = await Promise.all(files.map((file) => uploadImage(file, folder)));
+  return results;
+};
+
 export const uploadsServices = {
   uploadImage,
+  uploadMultipleImages,
 };

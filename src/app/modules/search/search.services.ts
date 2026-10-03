@@ -45,16 +45,14 @@ const searchGlobal = async (params: SearchQueryParams) => {
           where: {
             status: 'PUBLISHED',
             OR: [
-              { title: { contains: q, mode: 'insensitive' } },
-              { meaningBangla: { contains: q, mode: 'insensitive' } },
-              { duaBangla: { contains: q, mode: 'insensitive' } },
+              { meaning: { contains: q, mode: 'insensitive' } },
+              { transliteration: { contains: q, mode: 'insensitive' } },
             ],
           },
           select: {
             id: true,
-            title: true,
-            meaningBangla: true,
-            duaBangla: true,
+            meaning: true,
+            transliteration: true,
             arabicText: true,
             category: {
               select: {

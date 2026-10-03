@@ -19,6 +19,7 @@ enum SourceType {
 enum PostType {
   TEXT
   DUA
+  BLOOD_REQUEST
   QUESTION
   ANNOUNCEMENT
 }

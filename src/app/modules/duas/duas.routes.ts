@@ -9,7 +9,7 @@ const router = Router();
 
 router.post(
   '/',
-  checkAuth('ADMIN', 'MODERATOR'),
+  checkAuth(),
   validateRequest(createDuaZodSchema),
   duasController.create,
 );

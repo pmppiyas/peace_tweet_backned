@@ -14,6 +14,21 @@ export class UpdatePostDto {
   content?: string;
 
   @ApiPropertyOptional({
+    example: ['https://example.com/uploads/photo1.jpg'],
+    description: 'Updated list of image/photo URLs attached to this post.',
+  })
+  @IsOptional()
+  mediaUrls?: string[];
+
+  @ApiPropertyOptional({
+    example: 'COLLAGE',
+    description: 'Updated layout style for multiple photos: COLLAGE or SWIPE.',
+  })
+  @IsOptional()
+  @IsString()
+  mediaLayout?: string;
+
+  @ApiPropertyOptional({
     enum: PostVisibility,
     description: 'Updated visibility',
   })

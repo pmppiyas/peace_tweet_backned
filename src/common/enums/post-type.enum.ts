@@ -1,6 +1,7 @@
 export enum PostType {
   TEXT = 'TEXT',
   DUA = 'DUA',
+  BLOOD_REQUEST = 'BLOOD_REQUEST',
   QUESTION = 'QUESTION',
   ANNOUNCEMENT = 'ANNOUNCEMENT',
 }

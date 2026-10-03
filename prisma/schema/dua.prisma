@@ -1,11 +1,9 @@
 model Dua {
   id              String    @id @default(uuid())
-  title           String
-  fadilah         String    @db.Text
-  duaBangla       String    @db.Text
-  meaningBangla   String    @db.Text
-  arabicText      String?   @db.Text
+  fadilah         String?   @db.Text
   transliteration String?   @db.Text
+  meaning         String    @db.Text
+  arabicText      String?   @db.Text
   categoryId      String
   createdById     String
   status          DuaStatus @default(DRAFT)
@@ -21,7 +19,6 @@ model Dua {
 
   @@index([categoryId])
   @@index([createdById])
-  @@index([status])
   @@index([createdAt])
   @@index([status, categoryId])
   @@map("duas")

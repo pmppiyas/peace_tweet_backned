@@ -7,6 +7,7 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { buildPaginationMeta, calculatePagination } from '../../common/utils/pagination.util';
 import { PrismaService } from '../../database/prisma.service';
 import { CacheService } from '../../cache/cache.service';
+import { autoCategorizeDua } from '../../app/modules/duas/utils/dua-categorizer';
 import { CreateDuaDto } from './dto/create-dua.dto';
 import { QueryDuaDto } from './dto/query-dua.dto';
 import { UpdateDuaDto } from './dto/update-dua.dto';
@@ -19,24 +20,58 @@ export class DuasService {
   ) {}
 
   async create(dto: CreateDuaDto, createdById: string) {
-    const categoryExists = await this.prisma.category.findUnique({
-      where: { id: dto.categoryId },
-    });
-    if (!categoryExists) {
-      throw new BadRequestException(`Category with ID '${dto.categoryId}' does not exist.`);
+    const transliteration = (dto.transliteration || (dto as any).duaBangla || '').trim();
+    const meaningBangla = (dto.meaningBangla || (dto as any).meaning || '').trim();
+    const fadilah = dto.fadilah ? dto.fadilah.trim() : null;
+    const arabicText = dto.arabicText ? dto.arabicText.trim() : null;
+
+    let categoryId = dto.categoryId;
+
+    if (categoryId) {
+      const categoryExists = await this.prisma.category.findUnique({
+        where: { id: categoryId },
+      });
+      if (!categoryExists) {
+        throw new BadRequestException(`Category with ID '${categoryId}' does not exist.`);
+      }
+    } else {
+      // Non-LLM rule & root-based auto-categorization
+      const detectedSlug = autoCategorizeDua({
+        meaning: meaningBangla,
+        transliteration,
+        fadilah,
+      });
+
+      let category = await this.prisma.category.findUnique({
+        where: { slug: detectedSlug },
+      });
+
+      if (!category) {
+        category = await this.prisma.category.findUnique({
+          where: { slug: 'others' },
+        });
+      }
+
+      if (!category) {
+        category = await this.prisma.category.findFirst();
+      }
+
+      if (!category) {
+        throw new BadRequestException('No category found in database for categorization.');
+      }
+
+      categoryId = category.id;
     }
 
     const created = await this.prisma.dua.create({
       data: {
-        title: dto.title.trim(),
-        fadilah: dto.fadilah.trim(),
-        duaBangla: dto.duaBangla.trim(),
-        meaningBangla: dto.meaningBangla.trim(),
-        arabicText: dto.arabicText?.trim(),
-        transliteration: dto.transliteration?.trim(),
-        categoryId: dto.categoryId,
+        fadilah,
+        meaning: meaningBangla,
+        arabicText,
+        transliteration: transliteration || null,
+        categoryId,
         createdById,
-        status: dto.status ?? DuaStatus.DRAFT,
+        status: dto.status ?? DuaStatus.PUBLISHED,
       },
       include: {
         category: true,
@@ -45,6 +80,7 @@ export class DuasService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
       },
@@ -80,12 +116,10 @@ export class DuasService {
     if (query.search) {
       const search = query.search.trim();
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { duaBangla: { contains: search, mode: 'insensitive' } },
-        { meaningBangla: { contains: search, mode: 'insensitive' } },
+        { transliteration: { contains: search, mode: 'insensitive' } },
+        { meaning: { contains: search, mode: 'insensitive' } },
         { fadilah: { contains: search, mode: 'insensitive' } },
         { arabicText: { contains: search, mode: 'insensitive' } },
-        { transliteration: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -224,14 +258,16 @@ export class DuasService {
     const updated = await this.prisma.dua.update({
       where: { id },
       data: {
-        ...(dto.title && { title: dto.title.trim() }),
         ...(dto.fadilah && { fadilah: dto.fadilah.trim() }),
-        ...(dto.duaBangla && { duaBangla: dto.duaBangla.trim() }),
-        ...(dto.meaningBangla && { meaningBangla: dto.meaningBangla.trim() }),
-        ...(dto.arabicText !== undefined && { arabicText: dto.arabicText?.trim() }),
-        ...(dto.transliteration !== undefined && {
-          transliteration: dto.transliteration?.trim(),
+        ...(dto.transliteration !== undefined
+          ? { transliteration: dto.transliteration?.trim() }
+          : (dto as any).duaBangla
+            ? { transliteration: (dto as any).duaBangla.trim() }
+            : {}),
+        ...((dto.meaning || dto.meaningBangla) && {
+          meaning: (dto.meaning || dto.meaningBangla)!.trim(),
         }),
+        ...(dto.arabicText !== undefined && { arabicText: dto.arabicText?.trim() }),
         ...(dto.categoryId && { categoryId: dto.categoryId }),
         ...(dto.status && { status: dto.status }),
       },
@@ -259,6 +295,6 @@ export class DuasService {
     });
 
     await this.cache.delPattern('categories:*');
-    return { message: `Dua '${existing.title}' deleted successfully.` };
+    return { message: 'Dua deleted successfully.' };
   }
 }

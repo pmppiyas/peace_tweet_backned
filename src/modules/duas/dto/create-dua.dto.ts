@@ -11,39 +11,53 @@ import {
 import { DuaStatus } from '../../../common/enums/dua-status.enum';
 
 export class CreateDuaDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'ঘুমানোর সময় পড়ার দোয়া',
     description: 'Title or name of the Dua',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Title is required' })
-  @MinLength(2)
-  @MaxLength(200)
-  title: string;
+  title?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'রাসূলুল্লাহ (সা.) ঘুমানোর পূর্বে এই দোয়া পাঠ করতেন...',
     description: 'Virtues, context, or benefits (Fadilah) of the Dua',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Fadilah is required' })
-  fadilah: string;
+  fadilah?: string;
 
-  @ApiProperty({
-    example: 'হে আল্লাহ! আপনারই নামে আমি মৃত্যুবরণ (ঘুমাই) করছি...',
-    description: 'Bangla translation and pronunciation representation',
+  @ApiPropertyOptional({
+    example: 'আল্লাহুম্মা বিসমিকা আমূতু ওয়া আহ্ইয়া',
+    description: 'Pronunciation of Arabic in Bengali letters (transliteration / উচ্চারণ)',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Bangla text of Dua is required' })
-  duaBangla: string;
+  transliteration?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    example: 'আল্লাহুম্মা বিসমিকা আমূতু ওয়া আহ্ইয়া',
+    description: 'Bangla pronunciation / text representation',
+  })
+  @IsOptional()
+  @IsString()
+  duaBangla?: string;
+
+  @ApiPropertyOptional({
     example: 'হে আল্লাহ! আপনার নাম নিয়ে আমি মৃত্যুবরণ করি এবং জীবিত হই।',
     description: 'Detailed meaning and explanation in Bengali',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Bengali meaning is required' })
-  meaningBangla: string;
+  meaningBangla?: string;
+
+  @ApiPropertyOptional({
+    example: 'হে আল্লাহ! আপনার নাম নিয়ে আমি মৃত্যুবরণ করি এবং জীবিত হই।',
+    description: 'Meaning in Bengali (alias)',
+  })
+  @IsOptional()
+  @IsString()
+  meaning?: string;
 
   @ApiPropertyOptional({
     example: 'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا',
@@ -54,20 +68,12 @@ export class CreateDuaDto {
   arabicText?: string;
 
   @ApiPropertyOptional({
-    example: 'Bismika Allahumma amootu wa-ahya',
-    description: 'English / Latin transliteration of the Arabic text',
+    example: 'c6f6f1c4-1234-4b56-789a-0123456789ab',
+    description: 'ID of Category (optional - auto-categorized if not provided)',
   })
   @IsOptional()
-  @IsString()
-  transliteration?: string;
-
-  @ApiProperty({
-    example: 'c6f6f1c4-1234-4b56-789a-0123456789ab',
-    description: 'ID of Category this Dua belongs to',
-  })
   @IsUUID('4', { message: 'categoryId must be a valid UUID' })
-  @IsNotEmpty({ message: 'categoryId is required' })
-  categoryId: string;
+  categoryId?: string;
 
   @ApiPropertyOptional({
     enum: DuaStatus,

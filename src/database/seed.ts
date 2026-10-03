@@ -94,21 +94,19 @@ async function main() {
     }
 
     const existingDua = await prisma.dua.findFirst({
-      where: { title: duaData.title },
+      where: { meaning: duaData.meaningBangla },
     });
 
     let duaId: string;
     if (existingDua) {
       duaId = existingDua.id;
-      console.log(`ℹ️ Dua already exists: "${duaData.title}"`);
+      console.log(`ℹ️ Dua already exists: "${duaData.meaningBangla.slice(0, 30)}..."`);
     } else {
       const createdDua = await prisma.dua.create({
         data: {
-          title: duaData.title,
           arabicText: duaData.arabicText,
-          transliteration: duaData.transliteration,
-          duaBangla: duaData.duaBangla,
-          meaningBangla: duaData.meaningBangla,
+          transliteration: duaData.transliteration || (duaData as any).duaBangla,
+          meaning: duaData.meaningBangla,
           fadilah: duaData.fadilah,
           status: duaData.status,
           categoryId: categoryId,
@@ -116,7 +114,7 @@ async function main() {
         },
       });
       duaId = createdDua.id;
-      console.log(`✅ Dua created: "${duaData.title}"`);
+      console.log(`✅ Dua created: "${duaData.meaningBangla.slice(0, 30)}..."`);
 
       // Seed references
       for (const ref of duaData.references) {
@@ -165,7 +163,7 @@ async function main() {
             status: 'PUBLISHED',
           },
         });
-        console.log(`   📝 Feed Post created for Dua: "${duaData.title}"`);
+        console.log('   📝 Feed Post created for Dua');
       }
     }
   }

@@ -25,7 +25,19 @@ const uploadAvatar = catchAsync(async (req: Request & { user?: any }, res: Respo
   });
 });
 
+const uploadMultipleImages = catchAsync(async (req: Request, res: Response) => {
+  const files = req.files as Express.Multer.File[];
+  const result = await uploadsServices.uploadMultipleImages(files, 'peacetweet/uploads');
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: 'Images uploaded successfully',
+    data: result,
+  });
+});
+
 export const uploadsController = {
   uploadImage,
+  uploadMultipleImages,
   uploadAvatar,
 };
