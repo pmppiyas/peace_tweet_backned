@@ -7,6 +7,7 @@ export interface ICreatePostInput {
   status?: PostStatus;
   mediaUrls?: string[];
   mediaLayout?: string;
+  feeling?: string;
   duaId?: string;
   duaData?: {
     title?: string;
@@ -42,6 +43,7 @@ export interface IUpdatePostInput {
   status?: PostStatus;
   mediaUrls?: string[];
   mediaLayout?: string;
+  feeling?: string;
   duaId?: string;
   bloodRequestId?: string;
 }

@@ -5,6 +5,7 @@ model Post {
   content        String?        @db.Text
   mediaUrls      String[]       @default([])
   mediaLayout    String?        @default("COLLAGE")
+  feeling        String?
   duaId          String?
   bloodRequestId String?
   groupId        String?

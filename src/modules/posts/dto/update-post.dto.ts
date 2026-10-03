@@ -29,6 +29,14 @@ export class UpdatePostDto {
   mediaLayout?: string;
 
   @ApiPropertyOptional({
+    example: 'blessed',
+    description: 'Updated feeling attached to this post.',
+  })
+  @IsOptional()
+  @IsString()
+  feeling?: string;
+
+  @ApiPropertyOptional({
     enum: PostVisibility,
     description: 'Updated visibility',
   })

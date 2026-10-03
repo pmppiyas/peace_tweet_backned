@@ -51,6 +51,14 @@ export class CreatePostDto {
   mediaLayout?: string;
 
   @ApiPropertyOptional({
+    example: 'blessed',
+    description: 'Feeling attached to this post (e.g., blessed, grateful, happy).',
+  })
+  @IsOptional()
+  @IsString()
+  feeling?: string;
+
+  @ApiPropertyOptional({
     example: 'd8a6e8b2-5f33-4f0e-9494-b1c73a0889cf',
     description: 'Linked Dua ID. Optional if duaData is provided.',
   })

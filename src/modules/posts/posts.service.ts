@@ -143,6 +143,7 @@ export class PostsService {
         content: dto.content?.trim() || null,
         mediaUrls: normalizedMediaUrls,
         mediaLayout: dto.mediaLayout === 'SWIPE' ? 'SWIPE' : 'COLLAGE',
+        feeling: dto.feeling?.trim() || null,
         duaId: finalDuaId,
         bloodRequestId: finalBloodRequestId,
         visibility: dto.visibility ?? PostVisibility.PUBLIC,
@@ -380,6 +381,7 @@ export class PostsService {
         content: dto.content !== undefined ? dto.content.trim() : undefined,
         mediaUrls: dto.mediaUrls !== undefined ? dto.mediaUrls : undefined,
         mediaLayout: dto.mediaLayout !== undefined ? dto.mediaLayout : undefined,
+        feeling: dto.feeling !== undefined ? dto.feeling?.trim() || null : undefined,
         visibility: dto.visibility,
         status: dto.status,
       },
@@ -676,6 +678,7 @@ export class PostsService {
       content: post.content,
       mediaUrls: post.mediaUrls || [],
       mediaLayout: post.mediaLayout || 'COLLAGE',
+      feeling: post.feeling || null,
       bloodRequestId: post.bloodRequestId || null,
       bloodRequest: post.bloodRequest
         ? {

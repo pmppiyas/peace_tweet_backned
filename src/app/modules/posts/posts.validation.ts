@@ -8,6 +8,7 @@ export const createPostZodSchema = z.object({
   status: z.nativeEnum(PostStatus).optional().default(PostStatus.PUBLISHED),
   mediaUrls: z.array(z.string()).optional().default([]),
   mediaLayout: z.string().optional().default('COLLAGE'),
+  feeling: z.string().optional(),
   duaId: z.string().uuid().optional(),
   duaData: z
     .object({
@@ -47,6 +48,7 @@ export const updatePostZodSchema = z.object({
   status: z.nativeEnum(PostStatus).optional(),
   mediaUrls: z.array(z.string()).optional(),
   mediaLayout: z.string().optional(),
+  feeling: z.string().optional(),
   duaId: z.string().uuid().optional().nullable(),
   bloodRequestId: z.string().uuid().optional().nullable(),
 });
