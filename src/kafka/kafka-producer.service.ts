@@ -12,7 +12,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private isConnected = false;
   private readonly localListeners: Map<string, LocalEventListener[]> = new Map();
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService?: ConfigService) {}
 
   async onModuleInit() {
     await this.connect();
@@ -24,10 +24,12 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   private async connect(): Promise<void> {
     const brokers =
-      this.configService.get<string[]>('kafka.brokers') ||
-      (process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ['localhost:9092']);
+      this.configService?.get<string[]>('kafka.brokers') ||
+      (process.env.KAFKA_BROKERS
+        ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim())
+        : ['localhost:9092']);
     const clientId =
-      this.configService.get<string>('kafka.clientId') ||
+      this.configService?.get<string>('kafka.clientId') ||
       process.env.KAFKA_CLIENT_ID ||
       'peacetweet-api';
 
@@ -63,6 +65,10 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   // Produce a message to a Kafka topic
   async emit<T>(topic: string, key: string, payload: T): Promise<void> {
+    if (!this.producer && !this.isConnected) {
+      await this.connect();
+    }
+
     const serialized = JSON.stringify(payload);
 
     if (this.isAvailable() && this.producer) {

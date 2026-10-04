@@ -61,10 +61,7 @@ export const envConfig = (): EnvConfig => {
       port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : undefined,
       password: process.env.REDIS_PASSWORD || undefined,
       url:
-        process.env.Service_URI ||
-        process.env['Service URI'] ||
-        process.env.REDIS_URL ||
-        undefined,
+        process.env.Service_URI || process.env['Service URI'] || process.env.REDIS_URL || undefined,
     },
     kafka: {
       brokers: kafkaBrokers,

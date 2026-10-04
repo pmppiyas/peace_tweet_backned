@@ -8,6 +8,9 @@ import {
   IUpdatePostInput,
 } from './posts.interface';
 
+import { kafkaProducerService } from '../../config/kafka';
+import { KAFKA_TOPIC_POST_CREATED } from '../../../kafka/events/post-created.event';
+
 const serviceInstance = new PostsService(prisma as any);
 
 const invalidatePostCache = async (postId?: string) => {
@@ -28,6 +31,20 @@ const invalidatePostCache = async (postId?: string) => {
 const create = async (dto: ICreatePostInput, authorId: string) => {
   const result = await serviceInstance.create(dto as any, authorId);
   await invalidatePostCache(result?.id);
+
+  // Publish to Kafka message broker for asynchronous processing & event streaming
+  try {
+    await kafkaProducerService.emit(KAFKA_TOPIC_POST_CREATED, result.id, {
+      postId: result.id,
+      authorId,
+      type: result.type,
+      createdAt: result.createdAt,
+      status: result.status,
+    });
+  } catch (err: any) {
+    console.warn('Kafka event dispatch notice:', err.message);
+  }
+
   return result;
 };
 
