@@ -4,13 +4,15 @@ model Group {
   slug        String          @unique
   description String?         @db.Text
   avatarUrl   String?
-  visibility  GroupVisibility @default(PUBLIC)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  visibility           GroupVisibility    @default(PUBLIC)
+  requiresPostApproval Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  members      GroupMember[]      @relation("GroupMembers")
-  joinRequests GroupJoinRequest[] @relation("GroupJoinRequests")
-  posts        Post[]             @relation("GroupPosts")
+  members              GroupMember[]      @relation("GroupMembers")
+  joinRequests         GroupJoinRequest[] @relation("GroupJoinRequests")
+  posts                Post[]             @relation("GroupPosts")
+  sharedRecords        Share[]            @relation("GroupSharedRecords")
 
   @@index([name])
   @@index([createdAt])

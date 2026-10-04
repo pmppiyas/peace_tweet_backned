@@ -16,13 +16,19 @@ const serviceInstance = new PostsService(prisma as any);
 const invalidatePostCache = async (postId?: string) => {
   try {
     await cacheService.delPattern('feed:*');
+    await cacheService.delPattern('*feed*');
     if (postId) {
       await cacheService.delPattern(`posts:id:${postId}*`);
       await cacheService.delPattern(`posts:comments:${postId}*`);
+      await cacheService.delPattern(`*${postId}*`);
     } else {
       await cacheService.delPattern('posts:*');
+      await cacheService.delPattern('*posts*');
     }
+    await cacheService.delPattern('groups:*');
+    await cacheService.delPattern('*groups*');
     await cacheService.delPattern('search:*');
+    await cacheService.delPattern('*search*');
   } catch (err: any) {
     console.warn('Cache invalidation error in posts:', err.message);
   }

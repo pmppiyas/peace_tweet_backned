@@ -1,6 +1,6 @@
 model Post {
-  id         String         @id @default(uuid())
-  authorId   String
+  id             String         @id @default(uuid())
+  authorId       String
   type           PostType
   content        String?        @db.Text
   mediaUrls      String[]       @default([])
@@ -11,17 +11,26 @@ model Post {
   groupId        String?
   visibility     PostVisibility @default(PUBLIC)
   status         PostStatus     @default(PUBLISHED)
+
+  // Shared / Repost reference
+  originalPostId String?
+
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  author       User          @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
-  dua          Dua?          @relation("DuaPosts", fields: [duaId], references: [id], onDelete: SetNull)
-  bloodRequest BloodRequest? @relation("BloodRequestPosts", fields: [bloodRequestId], references: [id], onDelete: SetNull)
-  group        Group?        @relation("GroupPosts", fields: [groupId], references: [id], onDelete: Cascade)
-  comments     Comment[]     @relation("PostComments")
-  reactions    Reaction[]    @relation("PostReactions")
-  savedPosts   SavedPost[]   @relation("PostSaved")
+  author         User          @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  dua            Dua?          @relation("DuaPosts", fields: [duaId], references: [id], onDelete: SetNull)
+  bloodRequest   BloodRequest? @relation("BloodRequestPosts", fields: [bloodRequestId], references: [id], onDelete: SetNull)
+  group          Group?        @relation("GroupPosts", fields: [groupId], references: [id], onDelete: Cascade)
+  comments       Comment[]     @relation("PostComments")
+  reactions      Reaction[]    @relation("PostReactions")
+  savedPosts     SavedPost[]   @relation("PostSaved")
 
+  originalPost   Post?         @relation("PostReposts", fields: [originalPostId], references: [id], onDelete: SetNull)
+  reposts        Post[]        @relation("PostReposts")
+  shares         Share[]       @relation("PostShareRecords")
+
+  @@index([originalPostId])
   @@index([authorId, createdAt])
   @@index([type, createdAt])
   @@index([createdAt])

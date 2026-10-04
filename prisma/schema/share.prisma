@@ -1,0 +1,28 @@
+model Share {
+  id             String           @id @default(uuid())
+  userId         String
+  contentType    ShareContentType @default(POST)
+  contentId      String
+  target         ShareTarget      @default(FEED)
+  groupId        String?
+  caption        String?          @db.Text
+  sharedPostId   String?          @unique
+  createdAt      DateTime         @default(now())
+
+  // Referential Integrity (Cascade Delete)
+  postId         String?
+  duaId          String?
+  bloodRequestId String?
+
+  post           Post?            @relation("PostShareRecords", fields: [postId], references: [id], onDelete: Cascade)
+  dua            Dua?             @relation("DuaShareRecords", fields: [duaId], references: [id], onDelete: Cascade)
+  bloodRequest   BloodRequest?    @relation("BloodRequestShareRecords", fields: [bloodRequestId], references: [id], onDelete: Cascade)
+
+  user           User             @relation("UserShares", fields: [userId], references: [id], onDelete: Cascade)
+  group          Group?           @relation("GroupSharedRecords", fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([contentType, contentId, createdAt])
+  @@index([userId, createdAt])
+  @@index([groupId, createdAt])
+  @@map("shares")
+}

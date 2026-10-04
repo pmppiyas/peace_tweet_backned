@@ -899,6 +899,7 @@ export class GroupsService {
             id: true,
             name: true,
             username: true,
+            avatarUrl: true,
           },
         },
         dua: {
@@ -912,10 +913,62 @@ export class GroupsService {
             audios: true,
           },
         },
+        bloodRequest: {
+          include: {
+            requester: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            donations: true,
+          },
+        },
+        originalPost: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            dua: {
+              include: {
+                category: true,
+                references: {
+                  include: {
+                    source: true,
+                  },
+                },
+                audios: true,
+              },
+            },
+            bloodRequest: {
+              include: {
+                requester: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    avatarUrl: true,
+                  },
+                },
+                donations: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
+            savedPosts: true,
+            shares: true,
+            reposts: true,
           },
         },
         reactions: currentUserId
@@ -1169,7 +1222,7 @@ export class GroupsService {
     };
   }
 
-  private formatGroupPostResponse(post: any, currentUserId?: string) {
+  private formatGroupPostResponse(post: any, currentUserId?: string): any {
     return {
       id: post.id,
       groupId: post.groupId,
@@ -1182,8 +1235,43 @@ export class GroupsService {
         id: post.author?.id,
         name: post.author?.name,
         username: post.author?.username,
-        avatar: null,
+        avatar: post.author?.avatarUrl || null,
       },
+      originalPostId: post.originalPostId || null,
+      originalPost: post.originalPost ? this.formatGroupPostResponse(post.originalPost, currentUserId) : null,
+      bloodRequestId: post.bloodRequestId || null,
+      bloodRequest: post.bloodRequest
+        ? {
+            id: post.bloodRequest.id,
+            requesterId: post.bloodRequest.requesterId,
+            forMyself: post.bloodRequest.forMyself,
+            patientName: post.bloodRequest.patientName,
+            patientAge: post.bloodRequest.patientAge,
+            problem: post.bloodRequest.problem,
+            bloodGroup: post.bloodRequest.bloodGroup,
+            units: post.bloodRequest.units,
+            unitsFulfilled: post.bloodRequest.unitsFulfilled,
+            hospitalName: post.bloodRequest.hospitalName,
+            hospitalAddress: post.bloodRequest.hospitalAddress,
+            location: post.bloodRequest.location,
+            contactNumber: post.bloodRequest.contactNumber,
+            alternateContact: post.bloodRequest.alternateContact,
+            neededDate: post.bloodRequest.neededDate,
+            urgency: post.bloodRequest.urgency,
+            status: post.bloodRequest.status,
+            note: post.bloodRequest.note,
+            createdAt: post.bloodRequest.createdAt,
+            requester: post.bloodRequest.requester
+              ? {
+                  id: post.bloodRequest.requester.id,
+                  name: post.bloodRequest.requester.name,
+                  username: post.bloodRequest.requester.username,
+                  avatarUrl: post.bloodRequest.requester.avatarUrl,
+                }
+              : null,
+            donations: post.bloodRequest.donations || [],
+          }
+        : null,
       dua: post.dua
         ? {
             id: post.dua.id,
@@ -1219,6 +1307,8 @@ export class GroupsService {
       stats: {
         reactionCount: post._count?.reactions || 0,
         commentCount: post._count?.comments || 0,
+        saveCount: post._count?.savedPosts || 0,
+        shareCount: (post._count?.shares || 0) + (post._count?.reposts || 0),
       },
       viewer: {
         hasReacted: Array.isArray(post.reactions) ? post.reactions.length > 0 : false,

@@ -5,6 +5,10 @@ import {
   KAFKA_TOPIC_POST_CREATED,
   PostCreatedEvent,
 } from '../kafka/events/post-created.event';
+import {
+  KAFKA_TOPIC_POST_SHARED,
+  PostSharedEvent,
+} from '../kafka/events/post-shared.event';
 import { KafkaProducerService } from '../kafka/kafka-producer.service';
 import { cacheService } from '../app/config/cache';
 
@@ -21,11 +25,19 @@ export class PostWorkerService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    // Register local in-memory fallback listener
+    // Register local in-memory fallback listener for post created
     this.kafkaProducer.registerLocalListener(
       KAFKA_TOPIC_POST_CREATED,
       async (topic, key, payload: PostCreatedEvent) => {
         await this.handlePostCreated(payload);
+      },
+    );
+
+    // Register local in-memory fallback listener for post shared
+    this.kafkaProducer.registerLocalListener(
+      KAFKA_TOPIC_POST_SHARED,
+      async (topic, key, payload: PostSharedEvent) => {
+        await this.handlePostShared(payload);
       },
     );
 
@@ -48,40 +60,61 @@ export class PostWorkerService implements OnModuleInit, OnModuleDestroy {
     const brokers =
       this.configService.get<string[]>('kafka.brokers') ||
       (process.env.KAFKA_BROKERS
-        ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim())
-        : ['localhost:9092']);
+        ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim()).filter(Boolean)
+        : []);
     const groupId =
       this.configService.get<string>('kafka.groupId') ||
       process.env.KAFKA_GROUP_ID ||
-      'peacetweet-post-worker-group';
+      '';
+
+    if (!brokers.length || !groupId) {
+      this.isConnected = false;
+      this.logger.warn('⚠️ Kafka brokers or group ID not configured. Skipping Post Worker consumer initialization.');
+      return;
+    }
 
     try {
       this.kafka = new Kafka({
         clientId: 'peacetweet-post-worker',
         brokers,
-        logLevel: logLevel.WARN,
+        logLevel: logLevel.NOTHING,
+        connectionTimeout: 1000,
+        retry: {
+          initialRetryTime: 100,
+          retries: 0,
+        },
       });
 
-      this.consumer = this.kafka.consumer({ groupId });
+      this.consumer = this.kafka.consumer({
+        groupId,
+        retry: {
+          initialRetryTime: 100,
+          retries: 0,
+        },
+      });
       await this.consumer.connect();
       await this.consumer.subscribe({
-        topic: KAFKA_TOPIC_POST_CREATED,
+        topics: [KAFKA_TOPIC_POST_CREATED, KAFKA_TOPIC_POST_SHARED],
         fromBeginning: false,
       });
 
       this.isConnected = true;
       this.logger.log(
-        `📬 Post Worker Kafka Consumer connected & listening on topic '${KAFKA_TOPIC_POST_CREATED}'`,
+        `📬 Post Worker Kafka Consumer connected & listening on topics '${KAFKA_TOPIC_POST_CREATED}', '${KAFKA_TOPIC_POST_SHARED}'`,
       );
 
       await this.consumer.run({
-        eachMessage: async ({ message }) => {
+        eachMessage: async ({ topic, message }) => {
           if (!message.value) return;
           try {
-            const event: PostCreatedEvent = JSON.parse(message.value.toString());
-            await this.handlePostCreated(event);
+            const data = JSON.parse(message.value.toString());
+            if (topic === KAFKA_TOPIC_POST_SHARED) {
+              await this.handlePostShared(data);
+            } else {
+              await this.handlePostCreated(data);
+            }
           } catch (err: any) {
-            this.logger.error(`Error processing Kafka post message: ${err.message}`, err.stack);
+            this.logger.error(`Error processing Kafka message: ${err.message}`, err.stack);
           }
         },
       });
@@ -104,6 +137,23 @@ export class PostWorkerService implements OnModuleInit, OnModuleDestroy {
       await cacheService.delPattern('search:*');
     } catch (err: any) {
       this.logger.warn(`PostWorker cache invalidation notice: ${err.message}`);
+    }
+  }
+
+  async handlePostShared(event: PostSharedEvent): Promise<void> {
+    this.logger.log(
+      `⚡ [PostWorker] Processed share event via Kafka (Content: ${event.contentType} ${event.contentId} -> Target: ${event.target})`,
+    );
+    try {
+      await cacheService.delPattern('feed:*');
+      await cacheService.delPattern('posts:*');
+      await cacheService.delPattern('groups:*');
+      await cacheService.delPattern('search:*');
+      if (event.sharedPostId) {
+        await cacheService.delPattern(`posts:id:${event.sharedPostId}*`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`PostWorker share cache invalidation notice: ${err.message}`);
     }
   }
 }

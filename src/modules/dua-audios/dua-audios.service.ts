@@ -64,11 +64,17 @@ export class DuaAudiosService implements OnModuleInit, OnModuleDestroy {
   private async initKafkaProcessedConsumer(): Promise<void> {
     const brokers =
       this.configService.get<string[]>('kafka.brokers') ||
-      (process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ['localhost:9092']);
+      (process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim()).filter(Boolean) : []);
     const groupId =
       this.configService.get<string>('kafka.groupId') ||
       process.env.KAFKA_GROUP_ID ||
-      'peacetweet-dua-audio-handler-group';
+      '';
+
+    if (!brokers.length || !groupId) {
+      this.isConnected = false;
+      this.logger.warn('⚠️ Kafka brokers or group ID not configured. Skipping DuaAudios consumer initialization.');
+      return;
+    }
 
     try {
       this.kafka = new Kafka({

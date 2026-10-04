@@ -182,11 +182,49 @@ export class PostsService {
             donations: true,
           },
         },
+        originalPost: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            dua: {
+              include: {
+                category: true,
+                references: {
+                  include: {
+                    source: true,
+                  },
+                },
+                audios: true,
+              },
+            },
+            bloodRequest: {
+              include: {
+                requester: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    avatarUrl: true,
+                  },
+                },
+                donations: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
             savedPosts: true,
+            shares: true,
+            reposts: true,
           },
         },
       },
@@ -207,6 +245,10 @@ export class PostsService {
 
     if (query.type) {
       where.type = query.type;
+    }
+
+    if ((query as any).authorId) {
+      where.authorId = (query as any).authorId;
     }
 
     const rawPosts = await this.db.post.findMany({
@@ -250,11 +292,49 @@ export class PostsService {
             donations: true,
           },
         },
+        originalPost: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            dua: {
+              include: {
+                category: true,
+                references: {
+                  include: {
+                    source: true,
+                  },
+                },
+                audios: true,
+              },
+            },
+            bloodRequest: {
+              include: {
+                requester: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    avatarUrl: true,
+                  },
+                },
+                donations: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
             savedPosts: true,
+            shares: true,
+            reposts: true,
           },
         },
         reactions: currentUser?.id
@@ -324,11 +404,49 @@ export class PostsService {
             donations: true,
           },
         },
+        originalPost: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            dua: {
+              include: {
+                category: true,
+                references: {
+                  include: {
+                    source: true,
+                  },
+                },
+                audios: true,
+              },
+            },
+            bloodRequest: {
+              include: {
+                requester: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    avatarUrl: true,
+                  },
+                },
+                donations: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
             savedPosts: true,
+            shares: true,
+            reposts: true,
           },
         },
         reactions: currentUser?.id
@@ -407,10 +525,49 @@ export class PostsService {
             audios: true,
           },
         },
+        originalPost: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            dua: {
+              include: {
+                category: true,
+                references: {
+                  include: {
+                    source: true,
+                  },
+                },
+                audios: true,
+              },
+            },
+            bloodRequest: {
+              include: {
+                requester: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    avatarUrl: true,
+                  },
+                },
+                donations: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             reactions: true,
             comments: true,
+            savedPosts: true,
+            shares: true,
+            reposts: true,
           },
         },
       },
@@ -432,6 +589,17 @@ export class PostsService {
       throw new ForbiddenException('You are not authorized to delete this post.');
     }
 
+    // 1. Delete associated share rows from shares table (if this post was created as a share or was shared)
+    await this.db.share.deleteMany({
+      where: {
+        OR: [
+          { sharedPostId: id },
+          { postId: id },
+        ],
+      },
+    });
+
+    // 2. Delete the post record
     await this.db.post.delete({
       where: { id },
     });
@@ -701,7 +869,7 @@ export class PostsService {
     }
   }
 
-  private formatPostResponse(post: any, currentUserId?: string) {
+  private formatPostResponse(post: any, currentUserId?: string): any {
     return {
       id: post.id,
       groupId: post.groupId || null,
@@ -710,6 +878,8 @@ export class PostsService {
       mediaUrls: post.mediaUrls || [],
       mediaLayout: post.mediaLayout || 'COLLAGE',
       feeling: post.feeling || null,
+      originalPostId: post.originalPostId || null,
+      originalPost: post.originalPost ? this.formatPostResponse(post.originalPost, currentUserId) : null,
       bloodRequestId: post.bloodRequestId || null,
       bloodRequest: post.bloodRequest
         ? {
@@ -789,7 +959,7 @@ export class PostsService {
         reactionCount: post._count?.reactions || 0,
         commentCount: post._count?.comments || 0,
         saveCount: post._count?.savedPosts || 0,
-        shareCount: 0,
+        shareCount: (post._count?.shares || 0) + (post._count?.reposts || 0),
       },
       viewer: {
         hasReacted: Array.isArray(post.reactions) ? post.reactions.length > 0 : false,

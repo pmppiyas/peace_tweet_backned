@@ -8,6 +8,8 @@ import {
   updatePostZodSchema,
 } from './posts.validation';
 
+import { sharesController } from '../shares/shares.controller';
+
 const router = Router();
 
 router.get('/', optionalAuth(), postsController.getFeed);
@@ -25,6 +27,19 @@ router.post(
   checkAuth(),
   validateRequest(createCommentZodSchema),
   postsController.createComment,
+);
+router.post(
+  '/:postId/share',
+  checkAuth(),
+  (req, res, next) => {
+    req.body = {
+      ...req.body,
+      contentType: 'POST',
+      contentId: req.params.postId,
+      target: req.body.target || 'FEED',
+    };
+    return sharesController.createShare(req, res, next);
+  },
 );
 
 export const postsRoutes = router;

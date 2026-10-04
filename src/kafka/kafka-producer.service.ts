@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Kafka, Producer, logLevel } from 'kafkajs';
+import { Kafka, Producer, Partitioners, logLevel } from 'kafkajs';
 
 type LocalEventListener = (topic: string, key: string, message: any) => Promise<void> | void;
 
@@ -10,6 +10,9 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private kafka: Kafka | null = null;
   private producer: Producer | null = null;
   private isConnected = false;
+  private isConnecting = false;
+  private lastConnectAttempt = 0;
+  private readonly connectCooldownMs = 60000; // 1 min cooldown if unreachable
   private readonly localListeners: Map<string, LocalEventListener[]> = new Map();
 
   constructor(private readonly configService?: ConfigService) {}
@@ -23,28 +26,43 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connect(): Promise<void> {
+    if (this.isConnecting) return;
+    this.isConnecting = true;
+    this.lastConnectAttempt = Date.now();
+
     const brokers =
       this.configService?.get<string[]>('kafka.brokers') ||
       (process.env.KAFKA_BROKERS
-        ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim())
-        : ['localhost:9092']);
+        ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim()).filter(Boolean)
+        : []);
     const clientId =
       this.configService?.get<string>('kafka.clientId') ||
       process.env.KAFKA_CLIENT_ID ||
       'peacetweet-api';
 
+    if (!brokers.length || !clientId) {
+      this.isConnected = false;
+      this.isConnecting = false;
+      this.logger.warn(
+        '⚠️ Kafka brokers or client ID not configured. (Local asynchronous event fallback is active)',
+      );
+      return;
+    }
+
     try {
       this.kafka = new Kafka({
         clientId,
         brokers,
-        logLevel: logLevel.WARN,
+        logLevel: logLevel.NOTHING,
+        connectionTimeout: 1000,
         retry: {
-          initialRetryTime: 300,
-          retries: 3,
+          initialRetryTime: 100,
+          retries: 0,
         },
       });
 
       this.producer = this.kafka.producer({
+        createPartitioner: Partitioners.LegacyPartitioner,
         allowAutoTopicCreation: true,
       });
 
@@ -54,8 +72,10 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
     } catch (error: any) {
       this.isConnected = false;
       this.logger.warn(
-        `⚠️ Kafka connection notice: ${error.message}. (Local asynchronous event fallback is active)`,
+        `⚠️ Kafka broker unreachable at [${brokers.join(', ')}]. (Local asynchronous event pipeline is active)`,
       );
+    } finally {
+      this.isConnecting = false;
     }
   }
 
@@ -65,8 +85,12 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   // Produce a message to a Kafka topic
   async emit<T>(topic: string, key: string, payload: T): Promise<void> {
-    if (!this.producer && !this.isConnected) {
-      await this.connect();
+    if (!this.isAvailable()) {
+      const now = Date.now();
+      if (!this.isConnecting && now - this.lastConnectAttempt > this.connectCooldownMs) {
+        // Trigger background connection attempt without blocking this request
+        this.connect().catch(() => {});
+      }
     }
 
     const serialized = JSON.stringify(payload);

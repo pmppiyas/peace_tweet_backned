@@ -14,6 +14,7 @@ import { uploadsRoutes } from '../modules/uploads/uploads.routes';
 import { usersRoutes } from '../modules/users/users.routes';
 import { searchRoutes } from '../modules/search/search.routes';
 import { notificationsRoutes } from '../modules/notifications/notifications.routes';
+import { sharesRoutes } from '../modules/shares/shares.routes';
 
 export const router = Router();
 
@@ -26,6 +27,7 @@ const moduleRouter = [
   { path: '/groups', route: groupsRoutes },
   { path: '/posts', route: postsRoutes },
   { path: '/feed', route: feedRoutes },
+  { path: '/shares', route: sharesRoutes },
   { path: '/notifications', route: notificationsRoutes },
   { path: '/categories', route: categoriesRoutes },
   { path: '/sources', route: sourcesRoutes },

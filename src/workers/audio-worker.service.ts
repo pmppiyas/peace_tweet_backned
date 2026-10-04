@@ -63,20 +63,37 @@ export class AudioWorkerService implements OnModuleInit, OnModuleDestroy {
   private async initKafkaConsumer(): Promise<void> {
     const brokers =
       this.configService.get<string[]>('kafka.brokers') ||
-      (process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ['localhost:9092']);
+      (process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',').map((b) => b.trim()).filter(Boolean) : []);
     const groupId =
       this.configService.get<string>('kafka.groupId') ||
       process.env.KAFKA_GROUP_ID ||
-      'peacetweet-audio-worker-group';
+      '';
+
+    if (!brokers.length || !groupId) {
+      this.isConnected = false;
+      this.logger.warn('⚠️ Kafka brokers or group ID not configured. Skipping Audio Worker consumer initialization.');
+      return;
+    }
 
     try {
       this.kafka = new Kafka({
         clientId: 'peacetweet-audio-worker',
         brokers,
-        logLevel: logLevel.WARN,
+        logLevel: logLevel.NOTHING,
+        connectionTimeout: 1000,
+        retry: {
+          initialRetryTime: 100,
+          retries: 0,
+        },
       });
 
-      this.consumer = this.kafka.consumer({ groupId });
+      this.consumer = this.kafka.consumer({
+        groupId,
+        retry: {
+          initialRetryTime: 100,
+          retries: 0,
+        },
+      });
       await this.consumer.connect();
       await this.consumer.subscribe({
         topic: KAFKA_TOPIC_DUA_AUDIO_REQUESTED,

@@ -37,6 +37,7 @@ model User {
   searchHistories        SearchHistory[]    @relation("UserSearchHistories")
   receivedNotifications  Notification[]     @relation("UserReceivedNotifications")
   actorNotifications     Notification[]     @relation("UserActorNotifications")
+  shares                 Share[]            @relation("UserShares")
 
   @@index([email])
   @@index([username])
