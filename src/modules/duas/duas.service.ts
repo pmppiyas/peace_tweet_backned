@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DuaStatus } from '../../common/enums/dua-status.enum';
 import { Role } from '../../common/enums/role.enum';
@@ -87,55 +87,121 @@ export class DuasService {
     });
 
     await this.cache.delPattern('categories:*');
+    await this.cache.delPattern('duas:*');
     return created;
   }
 
   async findAll(query: QueryDuaDto, currentUser?: ActiveUserData): Promise<PaginatedResult<any>> {
     const { page, limit, skip, sortBy, sortOrder } = calculatePagination(query);
 
-    const where: Prisma.DuaWhereInput = {};
-
-    // Role-based visibility
     const isPrivileged =
       currentUser && (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
 
-    if (query.status) {
-      if (!isPrivileged && query.status !== DuaStatus.PUBLISHED) {
+    // Fetch base published items with Redis cache
+    const cacheKey = `duas:list:${JSON.stringify(query)}:priv=${Boolean(isPrivileged)}`;
+    const baseResult = await this.cache.remember(cacheKey, 300, async () => {
+      const where: Prisma.DuaWhereInput = {};
+
+      if (query.status) {
+        if (!isPrivileged && query.status !== DuaStatus.PUBLISHED) {
+          where.status = DuaStatus.PUBLISHED;
+        } else {
+          where.status = query.status;
+        }
+      } else if (!isPrivileged) {
         where.status = DuaStatus.PUBLISHED;
-      } else {
-        where.status = query.status;
       }
-    } else if (!isPrivileged) {
-      where.status = DuaStatus.PUBLISHED;
+
+      if (query.categoryId) {
+        where.categoryId = query.categoryId;
+      }
+
+      if (query.search) {
+        const search = query.search.trim();
+        where.OR = [
+          { transliteration: { contains: search, mode: 'insensitive' } },
+          { meaning: { contains: search, mode: 'insensitive' } },
+          { fadilah: { contains: search, mode: 'insensitive' } },
+          { arabicText: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      const [total, items] = await Promise.all([
+        this.prisma.dua.count({ where }),
+        this.prisma.dua.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [sortBy]: sortOrder },
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+            references: {
+              include: {
+                source: true,
+              },
+            },
+            audios: true,
+            _count: {
+              select: {
+                references: true,
+                audios: true,
+                savedBy: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      return { total, items };
+    });
+
+    let enrichedItems = baseResult.items;
+    if (currentUser) {
+      const savedDuaIds = new Set(
+        (
+          await this.prisma.savedDua.findMany({
+            where: {
+              userId: currentUser.id,
+              duaId: { in: baseResult.items.map((i: any) => i.id) },
+            },
+            select: { duaId: true },
+          })
+        ).map((s) => s.duaId),
+      );
+
+      enrichedItems = baseResult.items.map((item: any) => ({
+        ...item,
+        isSaved: savedDuaIds.has(item.id),
+      }));
     }
 
-    if (query.categoryId) {
-      where.categoryId = query.categoryId;
-    }
+    return {
+      data: enrichedItems,
+      meta: buildPaginationMeta(baseResult.total, page, limit),
+    };
+  }
 
-    if (query.search) {
-      const search = query.search.trim();
-      where.OR = [
-        { transliteration: { contains: search, mode: 'insensitive' } },
-        { meaning: { contains: search, mode: 'insensitive' } },
-        { fadilah: { contains: search, mode: 'insensitive' } },
-        { arabicText: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+  async findOne(id: string, currentUser?: ActiveUserData) {
+    const isPrivileged =
+      currentUser && (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
 
-    const [total, items] = await Promise.all([
-      this.prisma.dua.count({ where }),
-      this.prisma.dua.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { [sortBy]: sortOrder },
+    const cacheKey = `duas:id:${id}`;
+    const dua = await this.cache.remember(cacheKey, 600, async () => {
+      return await this.prisma.dua.findUnique({
+        where: { id },
         include: {
-          category: {
+          category: true,
+          createdBy: {
             select: {
               id: true,
               name: true,
-              slug: true,
+              username: true,
             },
           },
           references: {
@@ -152,65 +218,7 @@ export class DuasService {
             },
           },
         },
-      }),
-    ]);
-
-    // If currentUser is logged in, attach isSaved flag
-    let enrichedItems = items;
-    if (currentUser) {
-      const savedDuaIds = new Set(
-        (
-          await this.prisma.savedDua.findMany({
-            where: {
-              userId: currentUser.id,
-              duaId: { in: items.map((i) => i.id) },
-            },
-            select: { duaId: true },
-          })
-        ).map((s) => s.duaId),
-      );
-
-      enrichedItems = items.map((item) => ({
-        ...item,
-        isSaved: savedDuaIds.has(item.id),
-      }));
-    }
-
-    return {
-      data: enrichedItems,
-      meta: buildPaginationMeta(total, page, limit),
-    };
-  }
-
-  async findOne(id: string, currentUser?: ActiveUserData) {
-    const isPrivileged =
-      currentUser && (currentUser.role === Role.ADMIN || currentUser.role === Role.MODERATOR);
-
-    const dua = await this.prisma.dua.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-          },
-        },
-        references: {
-          include: {
-            source: true,
-          },
-        },
-        audios: true,
-        _count: {
-          select: {
-            references: true,
-            audios: true,
-            savedBy: true,
-          },
-        },
-      },
+      });
     });
 
     if (!dua) {
@@ -218,25 +226,25 @@ export class DuasService {
     }
 
     if (dua.status !== DuaStatus.PUBLISHED && !isPrivileged) {
-      throw new NotFoundException(`Dua with ID '${id}' is not available.`);
+      throw new ForbiddenException('Access denied to unpublished Dua.');
     }
 
-    let isSaved = false;
     if (currentUser) {
-      const saved = await this.prisma.savedDua.findUnique({
+      const saved = await this.prisma.savedDua.findFirst({
         where: {
-          userId_duaId: {
-            userId: currentUser.id,
-            duaId: id,
-          },
+          duaId: id,
+          userId: currentUser.id,
         },
       });
-      isSaved = !!saved;
+      return {
+        ...dua,
+        isSaved: Boolean(saved),
+      };
     }
 
     return {
       ...dua,
-      isSaved,
+      isSaved: false,
     };
   }
 
@@ -281,6 +289,7 @@ export class DuasService {
     });
 
     await this.cache.delPattern('categories:*');
+    await this.cache.delPattern('duas:*');
     return updated;
   }
 
@@ -295,6 +304,7 @@ export class DuasService {
     });
 
     await this.cache.delPattern('categories:*');
+    await this.cache.delPattern('duas:*');
     return { message: 'Dua deleted successfully.' };
   }
 }

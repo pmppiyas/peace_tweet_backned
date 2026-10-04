@@ -1,5 +1,6 @@
 import httpStatus from 'http-status-codes';
 import { prisma } from '../../config/prisma';
+import { cacheService } from '../../config/cache';
 import AppError from '../../utils/appError';
 import {
   ICreateBloodRequestInput,
@@ -7,6 +8,18 @@ import {
   IDonorQuery,
 } from './blood.interface';
 import { BloodRequestStatus } from '@prisma/client';
+
+const invalidateBloodCache = async (requestId?: string) => {
+  try {
+    await cacheService.delPattern('blood:*');
+    await cacheService.delPattern('feed:*');
+    if (requestId) {
+      await cacheService.delPattern(`blood:request:${requestId}`);
+    }
+  } catch (err: any) {
+    console.warn('Cache invalidation error in blood:', err.message);
+  }
+};
 
 const createBloodRequest = async (
   userId: string,
@@ -57,6 +70,8 @@ const createBloodRequest = async (
     },
   });
 
+  await invalidateBloodCache();
+
   return result;
 };
 
@@ -65,54 +80,106 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
   const limit = Math.max(1, Math.min(50, Number(query.limit) || 10));
   const skip = (page - 1) * limit;
 
-  const where: any = {};
+  const cacheKey = `blood:requests:${JSON.stringify(query)}`;
 
-  if (query.bloodGroup) {
-    where.bloodGroup = query.bloodGroup;
-  }
-  if (query.status) {
-    where.status = query.status;
-  }
-  if (query.urgency) {
-    where.urgency = query.urgency;
-  }
-  if (query.location) {
-    where.location = {
-      contains: query.location.trim(),
-      mode: 'insensitive',
-    };
-  }
-  if (query.requesterId) {
-    where.requesterId = query.requesterId;
-  }
-  if (query.donorId) {
-    where.donations = {
-      some: {
-        donorId: query.donorId,
-        status: { in: ['ACCEPTED', 'COMPLETED'] },
+  return cacheService.remember(cacheKey, 60, async () => {
+    const where: any = {};
+
+    if (query.bloodGroup) {
+      where.bloodGroup = query.bloodGroup;
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.urgency) {
+      where.urgency = query.urgency;
+    }
+    if (query.location) {
+      where.location = {
+        contains: query.location.trim(),
+        mode: 'insensitive',
+      };
+    }
+    if (query.requesterId) {
+      where.requesterId = query.requesterId;
+    }
+    if (query.donorId) {
+      where.donations = {
+        some: {
+          donorId: query.donorId,
+          status: { in: ['ACCEPTED', 'COMPLETED'] },
+        },
+      };
+    }
+    if (query.search) {
+      const s = query.search.trim();
+      where.OR = [
+        { patientName: { contains: s, mode: 'insensitive' } },
+        { hospitalName: { contains: s, mode: 'insensitive' } },
+        { location: { contains: s, mode: 'insensitive' } },
+        { problem: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.bloodRequest.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [
+          { urgency: 'desc' },
+          { neededDate: 'asc' },
+          { createdAt: 'desc' },
+        ],
+        include: {
+          requester: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              avatarUrl: true,
+            },
+          },
+          donations: {
+            where: {
+              status: { in: ['ACCEPTED', 'COMPLETED'] },
+            },
+            include: {
+              donor: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  avatarUrl: true,
+                  bloodGroup: true,
+                  donationCount: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.bloodRequest.count({ where }),
+    ]);
+
+    return {
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
+      items,
     };
-  }
-  if (query.search) {
-    const s = query.search.trim();
-    where.OR = [
-      { patientName: { contains: s, mode: 'insensitive' } },
-      { hospitalName: { contains: s, mode: 'insensitive' } },
-      { location: { contains: s, mode: 'insensitive' } },
-      { problem: { contains: s, mode: 'insensitive' } },
-    ];
-  }
+  });
+};
 
-  const [items, total] = await Promise.all([
-    prisma.bloodRequest.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: [
-        { urgency: 'desc' },
-        { neededDate: 'asc' },
-        { createdAt: 'desc' },
-      ],
+const getBloodRequestById = async (requestId: string) => {
+  const cacheKey = `blood:request:${requestId}`;
+
+  return cacheService.remember(cacheKey, 120, async () => {
+    const request = await prisma.bloodRequest.findUnique({
+      where: { id: requestId },
       include: {
         requester: {
           select: {
@@ -120,12 +187,10 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
             name: true,
             username: true,
             avatarUrl: true,
+            email: true,
           },
         },
         donations: {
-          where: {
-            status: { in: ['ACCEPTED', 'COMPLETED'] },
-          },
           include: {
             donor: {
               select: {
@@ -135,62 +200,20 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
                 avatarUrl: true,
                 bloodGroup: true,
                 donationCount: true,
+                location: true,
               },
             },
           },
         },
       },
-    }),
-    prisma.bloodRequest.count({ where }),
-  ]);
+    });
 
-  return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-    items,
-  };
-};
+    if (!request) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Blood request not found');
+    }
 
-const getBloodRequestById = async (requestId: string) => {
-  const request = await prisma.bloodRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      requester: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          avatarUrl: true,
-          email: true,
-        },
-      },
-      donations: {
-        include: {
-          donor: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              avatarUrl: true,
-              bloodGroup: true,
-              donationCount: true,
-              location: true,
-            },
-          },
-        },
-      },
-    },
+    return request;
   });
-
-  if (!request) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Blood request not found');
-  }
-
-  return request;
 };
 
 const acceptBloodRequest = async (
@@ -294,6 +317,8 @@ const acceptBloodRequest = async (
     return { donation, request: updatedRequest };
   });
 
+  await invalidateBloodCache(requestId);
+
   return result;
 };
 
@@ -358,6 +383,8 @@ const completeDonation = async (
     return { donation: updatedDonation, request: updatedRequest };
   });
 
+  await invalidateBloodCache(requestId);
+
   return result;
 };
 
@@ -406,6 +433,8 @@ const cancelDonation = async (requestId: string, donorUserId: string) => {
     return { message: 'Donation acceptance cancelled successfully', request: updatedRequest };
   });
 
+  await invalidateBloodCache(requestId);
+
   return result;
 };
 
@@ -433,6 +462,8 @@ const updateBloodRequestStatus = async (
     where: { id: requestId },
     data: { status },
   });
+
+  await invalidateBloodCache(requestId);
 
   return updated;
 };
@@ -483,6 +514,11 @@ const toggleDonorMode = async (userId: string, isDonor?: boolean) => {
     },
   });
 
+  await invalidateBloodCache();
+  try {
+    await cacheService.delPattern(`user:*:${userId}*`);
+  } catch (e) {}
+
   return user;
 };
 
@@ -491,63 +527,67 @@ const getAvailableDonors = async (query: IDonorQuery) => {
   const limit = Math.max(1, Math.min(50, Number(query.limit) || 10));
   const skip = (page - 1) * limit;
 
-  const where: any = {
-    isDonor: true,
-  };
+  const cacheKey = `blood:donors:${JSON.stringify(query)}`;
 
-  if (query.bloodGroup) {
-    where.bloodGroup = query.bloodGroup;
-  }
-  if (query.location) {
-    where.location = {
-      contains: query.location.trim(),
-      mode: 'insensitive',
+  return cacheService.remember(cacheKey, 120, async () => {
+    const where: any = {
+      isDonor: true,
     };
-  }
-  if (query.search) {
-    const s = query.search.trim();
-    where.OR = [
-      { name: { contains: s, mode: 'insensitive' } },
-      { username: { contains: s, mode: 'insensitive' } },
-      { location: { contains: s, mode: 'insensitive' } },
-    ];
-  }
 
-  const [donors, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: [
-        { donationCount: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        avatarUrl: true,
-        bloodGroup: true,
-        location: true,
-        bio: true,
-        isDonor: true,
-        donationCount: true,
-        badge: true,
-        userStatus: true,
+    if (query.bloodGroup) {
+      where.bloodGroup = query.bloodGroup;
+    }
+    if (query.location) {
+      where.location = {
+        contains: query.location.trim(),
+        mode: 'insensitive',
+      };
+    }
+    if (query.search) {
+      const s = query.search.trim();
+      where.OR = [
+        { name: { contains: s, mode: 'insensitive' } },
+        { username: { contains: s, mode: 'insensitive' } },
+        { location: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+
+    const [donors, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [
+          { donationCount: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          avatarUrl: true,
+          bloodGroup: true,
+          location: true,
+          bio: true,
+          isDonor: true,
+          donationCount: true,
+          badge: true,
+          userStatus: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-    }),
-    prisma.user.count({ where }),
-  ]);
-
-  return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-    items: donors,
-  };
+      items: donors,
+    };
+  });
 };
 
 export const bloodServices = {

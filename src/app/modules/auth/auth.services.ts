@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import httpStatus from 'http-status-codes';
 import { envVar } from '../../config/env';
 import { prisma } from '../../config/prisma';
+import { cacheService } from '../../config/cache';
 import { generateToken } from '../../helper/jwtTokenGen';
 import { verifyToken } from '../../helper/verifyToken';
 import AppError from '../../utils/appError';
@@ -202,38 +203,42 @@ const logout = async (userId: string): Promise<{ message: string }> => {
     where: { id: userId },
     data: { refreshToken: null },
   });
+  await cacheService.delPattern(`user:*:${userId}*`).catch(() => {});
   return { message: 'Logged out successfully' };
 };
 
 const getMe = async (userId: string): Promise<IUserProfile> => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      username: true,
-      email: true,
-      role: true,
-      avatarUrl: true,
-      location: true,
-      bloodGroup: true,
-      isDonor: true,
-      donationCount: true,
-      passwordHash: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+  const cacheKey = `user:me:${userId}`;
+  return cacheService.remember(cacheKey, 300, async () => {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        location: true,
+        bloodGroup: true,
+        isDonor: true,
+        donationCount: true,
+        passwordHash: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'User not found');
+    }
+
+    const { passwordHash, ...rest } = user;
+    return {
+      ...rest,
+      hasPassword: Boolean(passwordHash),
+    };
   });
-
-  if (!user) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'User not found');
-  }
-
-  const { passwordHash, ...rest } = user;
-  return {
-    ...rest,
-    hasPassword: Boolean(passwordHash),
-  };
 };
 
 interface IFacebookProfile {

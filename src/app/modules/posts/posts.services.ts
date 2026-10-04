@@ -1,5 +1,6 @@
 import { PostsService } from '../../../modules/posts/posts.service';
 import { prisma } from '../../config/prisma';
+import { cacheService } from '../../config/cache';
 import {
   ICreateCommentInput,
   ICreatePostInput,
@@ -9,38 +10,98 @@ import {
 
 const serviceInstance = new PostsService(prisma as any);
 
-const create = (dto: ICreatePostInput, authorId: string) =>
-  serviceInstance.create(dto as any, authorId);
+const invalidatePostCache = async (postId?: string) => {
+  try {
+    await cacheService.delPattern('feed:*');
+    if (postId) {
+      await cacheService.delPattern(`posts:id:${postId}*`);
+      await cacheService.delPattern(`posts:comments:${postId}*`);
+    } else {
+      await cacheService.delPattern('posts:*');
+    }
+    await cacheService.delPattern('search:*');
+  } catch (err: any) {
+    console.warn('Cache invalidation error in posts:', err.message);
+  }
+};
 
-const getFeed = (query: IQueryFeed, user?: any) =>
-  serviceInstance.getFeed(
-    {
-      cursor: query.cursor,
-      limit: query.limit ? Number(query.limit) : 20,
-      type: query.type as any,
-    },
-    user,
+const create = async (dto: ICreatePostInput, authorId: string) => {
+  const result = await serviceInstance.create(dto as any, authorId);
+  await invalidatePostCache(result?.id);
+  return result;
+};
+
+const getFeed = async (query: IQueryFeed, user?: any) => {
+  const cacheKey = user
+    ? `feed:user:${user.id}:${query.type || 'ALL'}:${query.cursor || 'start'}:${query.limit || 20}`
+    : `feed:public:${query.type || 'ALL'}:${query.cursor || 'start'}:${query.limit || 20}`;
+
+  return cacheService.remember(cacheKey, 30, () =>
+    serviceInstance.getFeed(
+      {
+        cursor: query.cursor,
+        limit: query.limit ? Number(query.limit) : 20,
+        type: query.type as any,
+      },
+      user,
+    ),
   );
+};
 
-const findOne = (id: string, user?: any) => serviceInstance.findOne(id, user);
+const findOne = async (id: string, user?: any) => {
+  if (!user) {
+    const cacheKey = `posts:id:${id}:public`;
+    return cacheService.remember(cacheKey, 60, () => serviceInstance.findOne(id, user));
+  }
+  return serviceInstance.findOne(id, user);
+};
 
-const update = (id: string, dto: IUpdatePostInput, user: any) =>
-  serviceInstance.update(id, dto as any, user);
+const update = async (id: string, dto: IUpdatePostInput, user: any) => {
+  const result = await serviceInstance.update(id, dto as any, user);
+  await invalidatePostCache(id);
+  return result;
+};
 
-const remove = (id: string, user: any) => serviceInstance.remove(id, user);
+const remove = async (id: string, user: any) => {
+  const result = await serviceInstance.remove(id, user);
+  await invalidatePostCache(id);
+  return result;
+};
 
-const savePost = (postId: string, userId: string) => serviceInstance.savePost(postId, userId);
+const savePost = async (postId: string, userId: string) => {
+  const result = await serviceInstance.savePost(postId, userId);
+  await invalidatePostCache(postId);
+  return result;
+};
 
-const unsavePost = (postId: string, userId: string) => serviceInstance.unsavePost(postId, userId);
+const unsavePost = async (postId: string, userId: string) => {
+  const result = await serviceInstance.unsavePost(postId, userId);
+  await invalidatePostCache(postId);
+  return result;
+};
 
-const react = (postId: string, userId: string) => serviceInstance.react(postId, userId);
+const react = async (postId: string, userId: string) => {
+  const result = await serviceInstance.react(postId, userId);
+  await invalidatePostCache(postId);
+  return result;
+};
 
-const unreact = (postId: string, userId: string) => serviceInstance.unreact(postId, userId);
+const unreact = async (postId: string, userId: string) => {
+  const result = await serviceInstance.unreact(postId, userId);
+  await invalidatePostCache(postId);
+  return result;
+};
 
-const getComments = (postId: string, limit = 50) => serviceInstance.getComments(postId, limit);
+const getComments = async (postId: string, limit = 50) => {
+  const cacheKey = `posts:comments:${postId}:${limit}`;
+  return cacheService.remember(cacheKey, 60, () => serviceInstance.getComments(postId, limit));
+};
 
-const createComment = (postId: string, userId: string, dto: ICreateCommentInput) =>
-  serviceInstance.createComment(postId, userId, dto as any);
+const createComment = async (postId: string, userId: string, dto: ICreateCommentInput) => {
+  const result = await serviceInstance.createComment(postId, userId, dto as any);
+  await invalidatePostCache(postId);
+  return result;
+};
 
 export const postsServices = {
   create,

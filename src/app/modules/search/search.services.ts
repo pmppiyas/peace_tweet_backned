@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma';
+import { cacheService } from '../../config/cache';
 import { AddSearchHistoryInput, SearchQueryParams } from './search.interface';
 
 const searchGlobal = async (params: SearchQueryParams) => {
@@ -17,7 +18,10 @@ const searchGlobal = async (params: SearchQueryParams) => {
     };
   }
 
-  // Parallel promises for ultra-fast query execution
+  const cacheKey = `search:${scope}:${q.toLowerCase()}:${limit}`;
+
+  return cacheService.remember(cacheKey, 180, async () => {
+    // Parallel promises for ultra-fast query execution
   const userPromise =
     scope === 'ALL' || scope === 'USERS'
       ? prisma.user.findMany({
@@ -132,13 +136,24 @@ const searchGlobal = async (params: SearchQueryParams) => {
     posts,
     total: users.length + duas.length + groups.length + posts.length,
   };
+  });
+};
+
+const invalidateSearchHistory = async (userId: string) => {
+  try {
+    await cacheService.delPattern(`search:history:${userId}*`);
+  } catch (err: any) {
+    console.warn('Failed to invalidate search history cache:', err.message);
+  }
 };
 
 const getSearchHistory = async (userId: string, limit: number = 8) => {
-  return prisma.searchHistory.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
+  return cacheService.remember(`search:history:${userId}:${limit}`, 60, async () => {
+    return prisma.searchHistory.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
   });
 };
 
@@ -191,19 +206,25 @@ const addSearchHistory = async (userId: string, data: AddSearchHistoryInput) => 
     })
     .catch(() => {});
 
+  await invalidateSearchHistory(userId);
+
   return created;
 };
 
 const deleteSearchHistoryItem = async (userId: string, id: string) => {
-  return prisma.searchHistory.deleteMany({
+  const result = await prisma.searchHistory.deleteMany({
     where: { id, userId },
   });
+  await invalidateSearchHistory(userId);
+  return result;
 };
 
 const clearSearchHistory = async (userId: string) => {
-  return prisma.searchHistory.deleteMany({
+  const result = await prisma.searchHistory.deleteMany({
     where: { userId },
   });
+  await invalidateSearchHistory(userId);
+  return result;
 };
 
 export const searchServices = {

@@ -1,42 +1,79 @@
 import { FriendsService } from '../../../modules/friends/friends.service';
 import { prisma } from '../../config/prisma';
+import { cacheService } from '../../config/cache';
 import { IFriendQuery } from './friends.interface';
 
 const serviceInstance = new FriendsService(prisma as any);
 
-const sendRequest = (senderId: string, receiverId: string) =>
-  serviceInstance.sendRequest(senderId, receiverId);
+const invalidateFriendsCache = async () => {
+  try {
+    await cacheService.delPattern('friends:*');
+    await cacheService.delPattern('feed:*');
+  } catch (err: any) {
+    console.warn('Cache invalidation error in friends:', err.message);
+  }
+};
 
-const cancelRequest = (requestId: string, userId: string) =>
-  serviceInstance.cancelRequest(requestId, userId);
+const sendRequest = async (senderId: string, receiverId: string) => {
+  const result = await serviceInstance.sendRequest(senderId, receiverId);
+  await invalidateFriendsCache();
+  return result;
+};
 
-const acceptRequest = (requestId: string, userId: string) =>
-  serviceInstance.acceptRequest(requestId, userId);
+const cancelRequest = async (requestId: string, userId: string) => {
+  const result = await serviceInstance.cancelRequest(requestId, userId);
+  await invalidateFriendsCache();
+  return result;
+};
 
-const rejectRequest = (requestId: string, userId: string) =>
-  serviceInstance.rejectRequest(requestId, userId);
+const acceptRequest = async (requestId: string, userId: string) => {
+  const result = await serviceInstance.acceptRequest(requestId, userId);
+  await invalidateFriendsCache();
+  return result;
+};
 
-const getReceivedRequests = (userId: string, query: IFriendQuery) =>
-  serviceInstance.getReceivedRequests(userId, {
-    cursor: query.cursor,
-    limit: query.limit ? Number(query.limit) : 20,
-  });
+const rejectRequest = async (requestId: string, userId: string) => {
+  const result = await serviceInstance.rejectRequest(requestId, userId);
+  await invalidateFriendsCache();
+  return result;
+};
 
-const getSentRequests = (userId: string, query: IFriendQuery) =>
-  serviceInstance.getSentRequests(userId, {
-    cursor: query.cursor,
-    limit: query.limit ? Number(query.limit) : 20,
-  });
+const getReceivedRequests = async (userId: string, query: IFriendQuery) => {
+  const cacheKey = `friends:received:${userId}:${query.cursor || 'start'}:${query.limit || 20}`;
+  return cacheService.remember(cacheKey, 60, () =>
+    serviceInstance.getReceivedRequests(userId, {
+      cursor: query.cursor,
+      limit: query.limit ? Number(query.limit) : 20,
+    }),
+  );
+};
 
-const getFriends = (userId: string, query: IFriendQuery) =>
-  serviceInstance.getFriends(userId, {
-    cursor: query.cursor,
-    limit: query.limit ? Number(query.limit) : 20,
-    search: query.search,
-  });
+const getSentRequests = async (userId: string, query: IFriendQuery) => {
+  const cacheKey = `friends:sent:${userId}:${query.cursor || 'start'}:${query.limit || 20}`;
+  return cacheService.remember(cacheKey, 60, () =>
+    serviceInstance.getSentRequests(userId, {
+      cursor: query.cursor,
+      limit: query.limit ? Number(query.limit) : 20,
+    }),
+  );
+};
 
-const unfriend = (userId: string, targetUserId: string) =>
-  serviceInstance.unfriend(userId, targetUserId);
+const getFriends = async (userId: string, query: IFriendQuery) => {
+  const cacheKey = `friends:list:${userId}:${query.cursor || 'start'}:${query.limit || 20}:${query.search || ''}`;
+  return cacheService.remember(cacheKey, 120, () =>
+    serviceInstance.getFriends(userId, {
+      cursor: query.cursor,
+      limit: query.limit ? Number(query.limit) : 20,
+      search: query.search,
+    }),
+  );
+};
+
+const unfriend = async (userId: string, targetUserId: string) => {
+  const result = await serviceInstance.unfriend(userId, targetUserId);
+  await invalidateFriendsCache();
+  return result;
+};
 
 const getRelationshipStatus = (viewerId: string | undefined, targetUserId: string) =>
   serviceInstance.getRelationshipStatus(viewerId, targetUserId);

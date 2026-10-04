@@ -1,6 +1,15 @@
 import { NotificationType } from '@prisma/client';
 import { prisma } from '../../config/prisma';
+import { cacheService } from '../../config/cache';
 import { ICreateNotificationInput, INotificationQuery } from './notifications.interface';
+
+const invalidateNotificationCache = async (userId: string) => {
+  try {
+    await cacheService.delPattern(`notifications:*:${userId}*`);
+  } catch (err: any) {
+    console.warn('Cache invalidation error in notifications:', err.message);
+  }
+};
 
 const createNotification = async (payload: ICreateNotificationInput) => {
   // Avoid notifying if actor is recipient (e.g. liking/commenting on own post)
@@ -9,7 +18,7 @@ const createNotification = async (payload: ICreateNotificationInput) => {
   }
 
   try {
-    return await prisma.notification.create({
+    const created = await prisma.notification.create({
       data: {
         recipientId: payload.recipientId,
         actorId: payload.actorId || null,
@@ -30,6 +39,9 @@ const createNotification = async (payload: ICreateNotificationInput) => {
         },
       },
     });
+
+    await invalidateNotificationCache(payload.recipientId);
+    return created;
   } catch (error) {
     console.error('Error creating notification:', error);
     return null;
@@ -41,51 +53,58 @@ const getNotifications = async (userId: string, query: INotificationQuery) => {
   const limit = Math.max(1, Math.min(50, Number(query.limit) || 20));
   const skip = (page - 1) * limit;
 
-  const where: any = { recipientId: userId };
-  if (query.isRead !== undefined && query.isRead !== '') {
-    where.isRead = String(query.isRead) === 'true';
-  }
+  const cacheKey = `notifications:list:${userId}:${page}:${limit}:${query.isRead ?? 'all'}`;
 
-  const [notifications, total, unreadCount] = await Promise.all([
-    prisma.notification.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        actor: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            avatarUrl: true,
+  return cacheService.remember(cacheKey, 60, async () => {
+    const where: any = { recipientId: userId };
+    if (query.isRead !== undefined && query.isRead !== '') {
+      where.isRead = String(query.isRead) === 'true';
+    }
+
+    const [notifications, total, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          actor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              avatarUrl: true,
+            },
           },
         },
-      },
-    }),
-    prisma.notification.count({ where }),
-    prisma.notification.count({
-      where: { recipientId: userId, isRead: false },
-    }),
-  ]);
+      }),
+      prisma.notification.count({ where }),
+      prisma.notification.count({
+        where: { recipientId: userId, isRead: false },
+      }),
+    ]);
 
-  return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      unreadCount,
-    },
-    data: notifications,
-  };
+    return {
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        unreadCount,
+      },
+      data: notifications,
+    };
+  });
 };
 
 const getUnreadCount = async (userId: string) => {
-  const count = await prisma.notification.count({
-    where: { recipientId: userId, isRead: false },
+  const cacheKey = `notifications:unread:${userId}`;
+  return cacheService.remember(cacheKey, 60, async () => {
+    const count = await prisma.notification.count({
+      where: { recipientId: userId, isRead: false },
+    });
+    return { unreadCount: count };
   });
-  return { unreadCount: count };
 };
 
 const markAsRead = async (id: string, userId: string) => {
@@ -104,6 +123,7 @@ const markAsRead = async (id: string, userId: string) => {
     },
   });
 
+  await invalidateNotificationCache(userId);
   return { success: true, data: updated };
 };
 
@@ -115,6 +135,7 @@ const markAllAsRead = async (userId: string) => {
     },
   });
 
+  await invalidateNotificationCache(userId);
   return { success: true, message: 'All notifications marked as read' };
 };
 
@@ -131,6 +152,7 @@ const remove = async (id: string, userId: string) => {
     where: { id },
   });
 
+  await invalidateNotificationCache(userId);
   return { success: true, message: 'Notification deleted successfully' };
 };
 

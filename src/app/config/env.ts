@@ -28,4 +28,9 @@ export const envVar = {
   META_APP_ID: process.env.META_APP_ID || '',
   META_APP_SECRET: process.env.META_APP_SECRET || '',
   META_REDIRECT_URI: process.env.META_REDIRECT_URI || '',
+  REDIS_URL:
+    process.env.REDIS_URL ||
+    process.env.Service_URI ||
+    process.env['Service URI'] ||
+    '',
 };

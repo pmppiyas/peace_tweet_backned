@@ -8,7 +8,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis | null = null;
   private isConnected = false;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService?: ConfigService) {}
 
   async onModuleInit() {
     await this.connect();
@@ -19,25 +19,31 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connect(): Promise<void> {
-    const redisUrl = this.configService.get<string>('redis.url') || process.env.REDIS_URL;
+    const redisUrl =
+      this.configService?.get<string>('redis.url') ||
+      process.env.REDIS_URL ||
+      process.env.Service_URI ||
+      process.env['Service URI'];
     const host =
-      this.configService.get<string>('redis.host') || process.env.REDIS_HOST || 'localhost';
+      this.configService?.get<string>('redis.host') || process.env.REDIS_HOST || 'localhost';
     const port = Number(
-      this.configService.get<number>('redis.port') || process.env.REDIS_PORT || 6379,
+      this.configService?.get<number>('redis.port') || process.env.REDIS_PORT || 6379,
     );
     const password =
-      this.configService.get<string>('redis.password') || process.env.REDIS_PASSWORD || undefined;
+      this.configService?.get<string>('redis.password') || process.env.REDIS_PASSWORD || undefined;
 
     try {
       if (redisUrl) {
+        const isTls = redisUrl.startsWith('rediss://');
         this.client = new Redis(redisUrl, {
+          tls: isTls ? { rejectUnauthorized: false } : undefined,
           lazyConnect: true,
           maxRetriesPerRequest: 2,
           retryStrategy: (times) => {
-            if (times > 3) {
+            if (times > 5) {
               return null;
             }
-            return Math.min(times * 200, 1000);
+            return Math.min(times * 200, 2000);
           },
         });
       } else {
@@ -48,17 +54,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
           lazyConnect: true,
           maxRetriesPerRequest: 2,
           retryStrategy: (times) => {
-            if (times > 3) {
+            if (times > 5) {
               return null;
             }
-            return Math.min(times * 200, 1000);
+            return Math.min(times * 200, 2000);
           },
         });
       }
 
       this.client.on('connect', () => {
         this.isConnected = true;
-        this.logger.log(`✅ Connected to Redis successfully at ${host}:${port}`);
+        this.logger.log(`✅ Connected to Redis successfully`);
+      });
+
+      this.client.on('ready', () => {
+        this.isConnected = true;
+        this.logger.log(`✅ Redis client is ready to accept commands`);
       });
 
       this.client.on('error', (err) => {
@@ -88,7 +99,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   isAvailable(): boolean {
-    return this.isConnected && this.client !== null && this.client.status === 'ready';
+    return (
+      (this.isConnected || this.client?.status === 'ready' || this.client?.status === 'connect') &&
+      this.client !== null
+    );
   }
 
   async get(key: string): Promise<string | null> {
