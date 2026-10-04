@@ -21,13 +21,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private async connect(): Promise<void> {
     const redisUrl =
       this.configService?.get<string>('redis.url') ||
-      process.env.REDIS_URL ||
       process.env.Service_URI ||
-      process.env['Service URI'];
+      process.env['Service URI'] ||
+      process.env.REDIS_URL;
     const host =
-      this.configService?.get<string>('redis.host') || process.env.REDIS_HOST || 'localhost';
+      this.configService?.get<string>('redis.host') || process.env.REDIS_HOST;
     const port = Number(
-      this.configService?.get<number>('redis.port') || process.env.REDIS_PORT || 6379,
+      this.configService?.get<number>('redis.port') || process.env.REDIS_PORT || 0,
     );
     const password =
       this.configService?.get<string>('redis.password') || process.env.REDIS_PASSWORD || undefined;
