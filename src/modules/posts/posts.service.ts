@@ -469,8 +469,9 @@ export class PostsService {
     }
 
     if (
-      post.status !== PostStatus.PUBLISHED &&
-      (!currentUser || (currentUser.id !== post.authorId && currentUser.role !== Role.ADMIN))
+      post.status === PostStatus.HIDDEN ||
+      (post.status !== PostStatus.PUBLISHED &&
+        (!currentUser || (currentUser.id !== post.authorId && currentUser.role !== Role.ADMIN)))
     ) {
       throw new NotFoundException(`Post with ID '${id}' not found.`);
     }
@@ -579,6 +580,11 @@ export class PostsService {
   async remove(id: string, currentUser: ActiveUserData) {
     const post = await this.db.post.findUnique({
       where: { id },
+      include: {
+        reposts: {
+          select: { id: true },
+        },
+      },
     });
 
     if (!post) {
@@ -589,7 +595,36 @@ export class PostsService {
       throw new ForbiddenException('You are not authorized to delete this post.');
     }
 
-    // 1. Delete associated share rows from shares table (if this post was created as a share or was shared)
+    // If this post was created as a share, clean up the share entry
+    await this.db.share.deleteMany({
+      where: { sharedPostId: id },
+    });
+
+    // If this post has reposts (shared by others), soft-delete / hide it so that
+    // reposts can still retain their reference and display "Post Unavailable"
+    if (post.reposts && post.reposts.length > 0) {
+      await this.db.post.update({
+        where: { id },
+        data: {
+          status: PostStatus.HIDDEN,
+          content: null,
+          mediaUrls: [],
+          feeling: null,
+        },
+      });
+
+      // Also clean up shares table rows pointing to this post as the shared target
+      await this.db.share.deleteMany({
+        where: { postId: id },
+      });
+
+      return {
+        success: true,
+        message: 'Post deleted successfully.',
+      };
+    }
+
+    // If no reposts exist, delete associated share rows and hard delete the post
     await this.db.share.deleteMany({
       where: {
         OR: [
@@ -599,7 +634,6 @@ export class PostsService {
       },
     });
 
-    // 2. Delete the post record
     await this.db.post.delete({
       where: { id },
     });
@@ -879,7 +913,20 @@ export class PostsService {
       mediaLayout: post.mediaLayout || 'COLLAGE',
       feeling: post.feeling || null,
       originalPostId: post.originalPostId || null,
-      originalPost: post.originalPost ? this.formatPostResponse(post.originalPost, currentUserId) : null,
+      originalPost: post.originalPost
+        ? post.originalPost.status !== PostStatus.PUBLISHED
+          ? {
+              id: post.originalPost.id,
+              isUnavailable: true,
+              status: post.originalPost.status,
+            }
+          : this.formatPostResponse(post.originalPost, currentUserId)
+        : post.originalPostId
+        ? {
+            id: post.originalPostId,
+            isUnavailable: true,
+          }
+        : null,
       bloodRequestId: post.bloodRequestId || null,
       bloodRequest: post.bloodRequest
         ? {
@@ -911,6 +958,11 @@ export class PostsService {
                 }
               : null,
             donations: post.bloodRequest.donations || [],
+          }
+        : post.bloodRequestId
+        ? {
+            id: post.bloodRequestId,
+            isUnavailable: true,
           }
         : null,
       createdAt: post.createdAt,
@@ -953,6 +1005,11 @@ export class PostsService {
               })) || [],
             audios: post.dua.audios || [],
             audioUrl: post.dua.audios?.[0]?.audioUrl || null,
+          }
+        : post.duaId
+        ? {
+            id: post.duaId,
+            isUnavailable: true,
           }
         : null,
       stats: {

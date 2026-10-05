@@ -46,6 +46,12 @@ enum FriendRequestStatus {
   CANCELLED
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum GroupVisibility {
   PUBLIC
   PRIVATE

@@ -1238,7 +1238,20 @@ export class GroupsService {
         avatar: post.author?.avatarUrl || null,
       },
       originalPostId: post.originalPostId || null,
-      originalPost: post.originalPost ? this.formatGroupPostResponse(post.originalPost, currentUserId) : null,
+      originalPost: post.originalPost
+        ? post.originalPost.status !== PostStatus.PUBLISHED
+          ? {
+              id: post.originalPost.id,
+              isUnavailable: true,
+              status: post.originalPost.status,
+            }
+          : this.formatGroupPostResponse(post.originalPost, currentUserId)
+        : post.originalPostId
+        ? {
+            id: post.originalPostId,
+            isUnavailable: true,
+          }
+        : null,
       bloodRequestId: post.bloodRequestId || null,
       bloodRequest: post.bloodRequest
         ? {
@@ -1271,6 +1284,11 @@ export class GroupsService {
               : null,
             donations: post.bloodRequest.donations || [],
           }
+        : post.bloodRequestId
+        ? {
+            id: post.bloodRequestId,
+            isUnavailable: true,
+          }
         : null,
       dua: post.dua
         ? {
@@ -1302,6 +1320,11 @@ export class GroupsService {
               })) || [],
             audios: post.dua.audios || [],
             audioUrl: post.dua.audios?.[0]?.audioUrl || null,
+          }
+        : post.duaId
+        ? {
+            id: post.duaId,
+            isUnavailable: true,
           }
         : null,
       stats: {
