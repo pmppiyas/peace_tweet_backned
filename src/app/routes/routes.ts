@@ -15,12 +15,14 @@ import { usersRoutes } from '../modules/users/users.routes';
 import { searchRoutes } from '../modules/search/search.routes';
 import { notificationsRoutes } from '../modules/notifications/notifications.routes';
 import { sharesRoutes } from '../modules/shares/shares.routes';
+import { chatRoutes } from '../modules/chat/chat.routes';
 
 export const router = Router();
 
 const moduleRouter = [
   { path: '/auth', route: authRoutes },
   { path: '/users', route: usersRoutes },
+  { path: '/chat', route: chatRoutes },
   { path: '/blood', route: bloodRoutes },
   { path: '/uploads', route: uploadsRoutes },
   { path: '/friends', route: friendsRoutes },

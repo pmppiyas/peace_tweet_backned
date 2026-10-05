@@ -36,6 +36,9 @@ model User {
   receivedNotifications  Notification[]     @relation("UserReceivedNotifications")
   actorNotifications     Notification[]     @relation("UserActorNotifications")
   shares                 Share[]            @relation("UserShares")
+  conversationsAsP1      Conversation[]     @relation("ConversationParticipantOne")
+  conversationsAsP2      Conversation[]     @relation("ConversationParticipantTwo")
+  sentMessages           Message[]          @relation("SentMessages")
 
   @@index([email])
   @@index([username])

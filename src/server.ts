@@ -1,7 +1,8 @@
-import { Server } from 'http';
+import { createServer, Server } from 'http';
 import app from './app';
 import { envVar } from './app/config/env';
 import { prisma } from './app/config/prisma';
+import { initSocket } from './socket';
 
 let server: Server;
 
@@ -10,10 +11,14 @@ async function bootstrap() {
     await prisma.$connect();
     console.log('✅ PostgreSQL Database connected via Prisma');
 
-    server = app.listen(envVar.PORT, () => {
+    const httpServer = createServer(app);
+    initSocket(httpServer);
+
+    server = httpServer.listen(envVar.PORT, () => {
       console.log(
         `🚀 PeaceTweet Express Server running on: http://localhost:${envVar.PORT}/${envVar.API_PREFIX}`,
       );
+      console.log('⚡ Socket.io Gateway initialized');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
