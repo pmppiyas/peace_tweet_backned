@@ -213,6 +213,13 @@ export class FriendsService {
       throw new ForbiddenException('You can only accept friend requests sent to you.');
     }
 
+    if (request.status === FriendshipStatus.ACCEPTED) {
+      return {
+        success: true,
+        message: 'Friend request accepted successfully.',
+      };
+    }
+
     if (request.status !== FriendshipStatus.PENDING) {
       throw new BadRequestException('Only pending friend requests can be accepted.');
     }
