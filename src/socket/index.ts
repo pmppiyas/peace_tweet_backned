@@ -5,6 +5,7 @@ import { envVar } from '../app/config/env';
 import { verifyToken } from '../app/helper/verifyToken';
 import { prisma } from '../app/config/prisma';
 import { chatServices } from '../app/modules/chat/chat.services';
+import { isOriginAllowed } from '../app/helper/corsHelper';
 
 let io: SocketIOServer | null = null;
 
@@ -12,12 +13,15 @@ let io: SocketIOServer | null = null;
 const onlineUsers = new Map<string, number>();
 
 export const initSocket = (httpServer: HttpServer): SocketIOServer => {
-  const allowedOrigins =
-    envVar.CORS_ORIGIN === '*' ? '*' : envVar.CORS_ORIGIN.split(',').map((origin) => origin.trim());
-
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: allowedOrigins,
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
       methods: ['GET', 'POST', 'PATCH', 'DELETE'],
       credentials: true,
     },
@@ -208,12 +212,14 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
           io?.to(`user:${updated.receiverId}`).emit('message:updated', updated);
           socket.emit('message:updated', updated);
 
-          io?.to(`user:${updated.receiverId}`).emit('conversation:updated', {
+          const convUpdatePayload = {
             conversationId: updated.conversationId,
             lastMessageText: updated.text,
             lastMessageAt: updated.updatedAt,
             senderId: userId,
-          });
+          };
+          io?.to(`user:${updated.receiverId}`).emit('conversation:updated', convUpdatePayload);
+          socket.emit('conversation:updated', convUpdatePayload);
 
           if (callback) callback({ success: true, data: updated });
         } catch (error: any) {
@@ -240,12 +246,14 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
           io?.to(`user:${deleted.receiverId}`).emit('message:deleted', deleted);
           socket.emit('message:deleted', deleted);
 
-          io?.to(`user:${deleted.receiverId}`).emit('conversation:updated', {
+          const convDeletePayload = {
             conversationId: deleted.conversationId,
             lastMessageText: deleted.text,
             lastMessageAt: deleted.updatedAt,
             senderId: userId,
-          });
+          };
+          io?.to(`user:${deleted.receiverId}`).emit('conversation:updated', convDeletePayload);
+          socket.emit('conversation:updated', convDeletePayload);
 
           if (callback) callback({ success: true, data: deleted });
         } catch (error: any) {

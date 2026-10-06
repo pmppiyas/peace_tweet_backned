@@ -6,6 +6,7 @@ import httpStatus from 'http-status-codes';
 import * as path from 'path';
 import { envVar } from './app/config/env';
 import { globalErrorHandler } from './app/middleware/globalErrorHandler';
+import { isOriginAllowed } from './app/helper/corsHelper';
 import { router } from './app/routes/routes';
 
 const app: Application = express();
@@ -23,12 +24,23 @@ const audiosDir = path.join(uploadsDir, 'audios');
 // CORS Configuration
 app.use(
   cors({
-    origin:
-      envVar.CORS_ORIGIN === '*'
-        ? true
-        : envVar.CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+    optionsSuccessStatus: 204,
   }),
 );
 
