@@ -37,6 +37,7 @@ export interface IUserProfile {
   isDonor?: boolean;
   donationCount?: number;
   hasPassword?: boolean;
+  needPasswordUpdate?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

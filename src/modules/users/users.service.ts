@@ -38,6 +38,7 @@ export class UsersService {
         isDonor: true,
         donationCount: true,
         passwordHash: true,
+        needPasswordUpdate: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -51,6 +52,7 @@ export class UsersService {
     return {
       ...rest,
       hasPassword: Boolean(passwordHash),
+      needPasswordUpdate: user.needPasswordUpdate ?? !passwordHash,
     };
   }
 
@@ -179,6 +181,7 @@ export class UsersService {
         badge: true,
         userStatus: true,
         passwordHash: true,
+        needPasswordUpdate: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -188,6 +191,7 @@ export class UsersService {
     return {
       ...rest,
       hasPassword: Boolean(passwordHash),
+      needPasswordUpdate: updated.needPasswordUpdate ?? !passwordHash,
     };
   }
 
@@ -219,7 +223,10 @@ export class UsersService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: newPasswordHash },
+      data: {
+        passwordHash: newPasswordHash,
+        needPasswordUpdate: false,
+      },
     });
 
     return {

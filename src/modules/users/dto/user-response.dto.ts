@@ -43,6 +43,9 @@ export class UserDto {
   @ApiPropertyOptional({ example: true })
   hasPassword?: boolean;
 
+  @ApiPropertyOptional({ example: false })
+  needPasswordUpdate?: boolean;
+
   @ApiProperty({ example: '2026-09-24T12:00:00.000Z' })
   createdAt: Date;
 

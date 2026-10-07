@@ -33,13 +33,7 @@ app.use(
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-    ],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     optionsSuccessStatus: 204,
   }),
 );
@@ -57,7 +51,7 @@ app.get(['/', '/api/v1/health'], (_req: Request, res: Response) => {
   res.status(httpStatus.OK).json({
     success: true,
     statusCode: httpStatus.OK,
-    message: 'PeaceTweet Express + Prisma + Zod API is running smoothly!',
+    message: 'PeaceTweet Server is running smoothly!',
     data: {
       timestamp: new Date().toISOString(),
       environment: envVar.NODE_ENV,
@@ -67,6 +61,9 @@ app.get(['/', '/api/v1/health'], (_req: Request, res: Response) => {
 
 // Central API Router (/api/v1)
 app.use(`/${envVar.API_PREFIX.replace(/^\//, '')}`, router);
+
+// Direct Router Fallback (allows endpoints like /feed, /posts, /auth to work even if /api/v1 is omitted)
+app.use(router);
 
 // 404 Not Found Handler
 app.use((req: Request, res: Response, _next: NextFunction) => {

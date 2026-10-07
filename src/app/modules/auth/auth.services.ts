@@ -117,7 +117,7 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
   return {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
-    user: { ...user, hasPassword: true },
+    user: { ...user, hasPassword: true, needPasswordUpdate: false },
   };
 };
 
@@ -158,6 +158,7 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
     isDonor: user.isDonor,
     donationCount: user.donationCount,
     hasPassword: true,
+    needPasswordUpdate: user.needPasswordUpdate ?? false,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -224,6 +225,7 @@ const getMe = async (userId: string): Promise<IUserProfile> => {
         isDonor: true,
         donationCount: true,
         passwordHash: true,
+        needPasswordUpdate: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -237,6 +239,7 @@ const getMe = async (userId: string): Promise<IUserProfile> => {
     return {
       ...rest,
       hasPassword: Boolean(passwordHash),
+      needPasswordUpdate: user.needPasswordUpdate ?? !passwordHash,
     };
   });
 };
@@ -355,6 +358,7 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
         username: resolvedUsername,
         email,
         passwordHash: null,
+        needPasswordUpdate: true,
         facebookId: fbProfile.id,
         authProvider: AuthProvider.FACEBOOK,
         role: Role.USER,
@@ -375,6 +379,7 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
     isDonor: user.isDonor,
     donationCount: user.donationCount,
     hasPassword: Boolean(user.passwordHash),
+    needPasswordUpdate: user.needPasswordUpdate ?? !user.passwordHash,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
