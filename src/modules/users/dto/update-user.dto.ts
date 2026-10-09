@@ -1,11 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { BloodGroup } from '../../../common/enums/blood-group.enum';
@@ -46,8 +49,32 @@ export class UpdateUserDto {
   @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
   @IsOptional()
   @IsString()
-  @MaxLength(100)
+  @MaxLength(250)
   location?: string;
+
+  @ApiPropertyOptional({ example: 'Bangladesh' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  country?: string;
+
+  @ApiPropertyOptional({ example: 'BD' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  countryCode?: string;
+
+  @ApiPropertyOptional({ example: 'Dhaka Division' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Dhaka' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string;
 
   @ApiPropertyOptional({ enum: BloodGroup, example: BloodGroup.A_POSITIVE })
   @IsOptional()
@@ -70,4 +97,15 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   userStatus?: any;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isDonor?: boolean;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  donationCount?: number;
 }

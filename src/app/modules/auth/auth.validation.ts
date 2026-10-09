@@ -21,7 +21,11 @@ export const registerZodSchema = z.object({
     .min(6, 'Password must be at least 6 characters long')
     .max(50, 'Password cannot exceed 50 characters'),
   avatarUrl: z.string().optional(),
-  location: z.string().max(100, 'Location cannot exceed 100 characters').optional(),
+  country: z.string().max(100).optional(),
+  countryCode: z.string().max(10).optional(),
+  state: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
+  location: z.string().max(250, 'Location cannot exceed 250 characters').optional(),
   bloodGroup: z.nativeEnum(BloodGroup).optional(),
 });
 

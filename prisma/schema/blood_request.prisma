@@ -12,6 +12,10 @@ model BloodRequest {
   unitsFulfilled   Int                  @default(0)
   hospitalName     String
   hospitalAddress  String?
+  country          String?              @default("Bangladesh")
+  countryCode      String?              @default("BD")
+  state            String?
+  city             String?
   location         String
   contactNumber    String
   alternateContact String?
@@ -29,6 +33,7 @@ model BloodRequest {
 
   @@index([bloodGroup])
   @@index([status])
+  @@index([countryCode])
   @@index([location])
   @@index([requesterId])
   @@map("blood_requests")

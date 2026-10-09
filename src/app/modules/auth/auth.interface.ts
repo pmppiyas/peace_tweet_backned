@@ -6,6 +6,10 @@ export interface IRegisterInput {
   email: string;
   password: string;
   avatarUrl?: string;
+  country?: string;
+  countryCode?: string;
+  state?: string;
+  city?: string;
   location?: string;
   bloodGroup?: BloodGroup;
 }
@@ -32,6 +36,10 @@ export interface IUserProfile {
   email: string;
   role: Role;
   avatarUrl?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  state?: string | null;
+  city?: string | null;
   location?: string | null;
   bloodGroup?: BloodGroup | null;
   isDonor?: boolean;

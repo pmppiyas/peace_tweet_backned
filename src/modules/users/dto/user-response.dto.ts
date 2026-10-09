@@ -28,6 +28,18 @@ export class UserDto {
   @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
   location?: string | null;
 
+  @ApiPropertyOptional({ example: 'Bangladesh' })
+  country?: string | null;
+
+  @ApiPropertyOptional({ example: 'BD' })
+  countryCode?: string | null;
+
+  @ApiPropertyOptional({ example: 'Dhaka Division' })
+  state?: string | null;
+
+  @ApiPropertyOptional({ example: 'Dhaka' })
+  city?: string | null;
+
   @ApiPropertyOptional({ enum: BloodGroup, example: BloodGroup.A_POSITIVE })
   bloodGroup?: BloodGroup | null;
 
@@ -39,6 +51,12 @@ export class UserDto {
 
   @ApiPropertyOptional({ example: 'NON_VERIFIED' })
   userStatus?: string;
+
+  @ApiPropertyOptional({ example: false })
+  isDonor?: boolean;
+
+  @ApiPropertyOptional({ example: 0 })
+  donationCount?: number;
 
   @ApiPropertyOptional({ example: true })
   hasPassword?: boolean;

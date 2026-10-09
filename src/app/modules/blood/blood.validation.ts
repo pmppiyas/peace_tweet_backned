@@ -16,6 +16,10 @@ export const createBloodRequestZodSchema = z.object({
     required_error: 'Hospital name is required',
   }).min(1, 'Hospital name cannot be empty').trim(),
   hospitalAddress: z.string().optional().nullable(),
+  country: z.string().max(100).optional(),
+  countryCode: z.string().max(10).optional(),
+  state: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
   location: z.string({
     required_error: 'Location or District is required',
   }).min(1, 'Location cannot be empty').trim(),

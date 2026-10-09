@@ -9,6 +9,10 @@ export interface ICreateBloodRequestInput {
   units?: number;
   hospitalName: string;
   hospitalAddress?: string;
+  country?: string;
+  countryCode?: string;
+  state?: string;
+  city?: string;
   location: string;
   contactNumber: string;
   alternateContact?: string;
@@ -25,6 +29,9 @@ export interface IBloodRequestQuery {
   bloodGroup?: BloodGroup;
   status?: BloodRequestStatus;
   urgency?: BloodRequestUrgency;
+  countryCode?: string;
+  state?: string;
+  city?: string;
   location?: string;
   search?: string;
   requesterId?: string;
@@ -36,6 +43,9 @@ export interface IBloodRequestQuery {
 
 export interface IDonorQuery {
   bloodGroup?: BloodGroup;
+  countryCode?: string;
+  state?: string;
+  city?: string;
   location?: string;
   search?: string;
   page?: string | number;

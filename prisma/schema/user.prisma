@@ -14,6 +14,10 @@ model User {
   refreshToken String?      @db.Text
   avatarUrl    String?
   coverUrl     String?
+  country      String?      @default("Bangladesh")
+  countryCode  String?      @default("BD")
+  state        String?
+  city         String?
   location     String?
   bloodGroup   BloodGroup?
   isDonor      Boolean      @default(false)
@@ -43,5 +47,7 @@ model User {
 
   @@index([email])
   @@index([username])
+  @@index([countryCode])
+  @@index([bloodGroup, isDonor])
   @@map("users")
 }

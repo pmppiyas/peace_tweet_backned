@@ -30,6 +30,10 @@ export class UsersService {
         role: true,
         avatarUrl: true,
         coverUrl: true,
+        country: true,
+        countryCode: true,
+        state: true,
+        city: true,
         location: true,
         bloodGroup: true,
         bio: true,
@@ -68,6 +72,10 @@ export class UsersService {
         role: true,
         avatarUrl: true,
         coverUrl: true,
+        country: true,
+        countryCode: true,
+        state: true,
+        city: true,
         location: true,
         bloodGroup: true,
         bio: true,
@@ -148,6 +156,22 @@ export class UsersService {
       updateData.location = dto.location?.trim() || null;
     }
 
+    if (dto.country !== undefined) {
+      updateData.country = dto.country?.trim() || null;
+    }
+
+    if (dto.countryCode !== undefined) {
+      updateData.countryCode = dto.countryCode?.trim() || null;
+    }
+
+    if (dto.state !== undefined) {
+      updateData.state = dto.state?.trim() || null;
+    }
+
+    if (dto.city !== undefined) {
+      updateData.city = dto.city?.trim() || null;
+    }
+
     if (dto.bloodGroup !== undefined) {
       updateData.bloodGroup = dto.bloodGroup || null;
     }
@@ -164,6 +188,14 @@ export class UsersService {
       updateData.userStatus = dto.userStatus;
     }
 
+    if (dto.isDonor !== undefined) {
+      updateData.isDonor = Boolean(dto.isDonor);
+    }
+
+    if (dto.donationCount !== undefined) {
+      updateData.donationCount = Number(dto.donationCount);
+    }
+
     const updated = await this.prisma.user.update({
       where: { id },
       data: updateData,
@@ -175,11 +207,17 @@ export class UsersService {
         role: true,
         avatarUrl: true,
         coverUrl: true,
+        country: true,
+        countryCode: true,
+        state: true,
+        city: true,
         location: true,
         bloodGroup: true,
         bio: true,
         badge: true,
         userStatus: true,
+        isDonor: true,
+        donationCount: true,
         passwordHash: true,
         needPasswordUpdate: true,
         createdAt: true,

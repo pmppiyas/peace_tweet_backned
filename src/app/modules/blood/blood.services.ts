@@ -49,6 +49,10 @@ const createBloodRequest = async (
       units: payload.units || 1,
       hospitalName: payload.hospitalName.trim(),
       hospitalAddress: payload.hospitalAddress?.trim() || null,
+      country: payload.country?.trim() || 'Bangladesh',
+      countryCode: payload.countryCode?.trim() || 'BD',
+      state: payload.state?.trim() || null,
+      city: payload.city?.trim() || null,
       location: payload.location.trim(),
       contactNumber: payload.contactNumber.trim(),
       alternateContact: payload.alternateContact?.trim() || null,
@@ -83,43 +87,75 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
   const cacheKey = `blood:requests:${JSON.stringify(query)}`;
 
   return cacheService.remember(cacheKey, 60, async () => {
-    const where: any = {};
+    const conditions: any[] = [];
 
     if (query.bloodGroup) {
-      where.bloodGroup = query.bloodGroup;
+      conditions.push({ bloodGroup: query.bloodGroup });
     }
     if (query.status) {
-      where.status = query.status;
+      conditions.push({ status: query.status });
     }
     if (query.urgency) {
-      where.urgency = query.urgency;
-    }
-    if (query.location) {
-      where.location = {
-        contains: query.location.trim(),
-        mode: 'insensitive',
-      };
+      conditions.push({ urgency: query.urgency });
     }
     if (query.requesterId) {
-      where.requesterId = query.requesterId;
+      conditions.push({ requesterId: query.requesterId });
     }
     if (query.donorId) {
-      where.donations = {
-        some: {
-          donorId: query.donorId,
-          status: { in: ['ACCEPTED', 'COMPLETED'] },
+      conditions.push({
+        donations: {
+          some: {
+            donorId: query.donorId,
+            status: { in: ['ACCEPTED', 'COMPLETED'] },
+          },
         },
-      };
+      });
     }
+
+    // Location Filters (City > State > Country > Free text)
+    if (query.city) {
+      const c = query.city.trim();
+      conditions.push({
+        OR: [
+          { city: { contains: c, mode: 'insensitive' } },
+          { location: { contains: c, mode: 'insensitive' } },
+        ],
+      });
+    } else if (query.state) {
+      const s = query.state.trim();
+      conditions.push({
+        OR: [
+          { state: { contains: s, mode: 'insensitive' } },
+          { location: { contains: s, mode: 'insensitive' } },
+        ],
+      });
+    } else if (query.countryCode) {
+      conditions.push({
+        OR: [
+          { countryCode: query.countryCode },
+          { country: { contains: query.countryCode, mode: 'insensitive' } },
+          { location: { contains: query.countryCode, mode: 'insensitive' } },
+        ],
+      });
+    } else if (query.location) {
+      conditions.push({
+        location: { contains: query.location.trim(), mode: 'insensitive' },
+      });
+    }
+
     if (query.search) {
       const s = query.search.trim();
-      where.OR = [
-        { patientName: { contains: s, mode: 'insensitive' } },
-        { hospitalName: { contains: s, mode: 'insensitive' } },
-        { location: { contains: s, mode: 'insensitive' } },
-        { problem: { contains: s, mode: 'insensitive' } },
-      ];
+      conditions.push({
+        OR: [
+          { patientName: { contains: s, mode: 'insensitive' } },
+          { hospitalName: { contains: s, mode: 'insensitive' } },
+          { location: { contains: s, mode: 'insensitive' } },
+          { problem: { contains: s, mode: 'insensitive' } },
+        ],
+      });
     }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const [items, total] = await Promise.all([
       prisma.bloodRequest.findMany({
@@ -530,27 +566,55 @@ const getAvailableDonors = async (query: IDonorQuery) => {
   const cacheKey = `blood:donors:${JSON.stringify(query)}`;
 
   return cacheService.remember(cacheKey, 120, async () => {
-    const where: any = {
-      isDonor: true,
-    };
+    const conditions: any[] = [{ isDonor: true }];
 
     if (query.bloodGroup) {
-      where.bloodGroup = query.bloodGroup;
+      conditions.push({ bloodGroup: query.bloodGroup });
     }
-    if (query.location) {
-      where.location = {
-        contains: query.location.trim(),
-        mode: 'insensitive',
-      };
+
+    // Location Filters (City > State > Country > Free text)
+    if (query.city) {
+      const c = query.city.trim();
+      conditions.push({
+        OR: [
+          { city: { contains: c, mode: 'insensitive' } },
+          { location: { contains: c, mode: 'insensitive' } },
+        ],
+      });
+    } else if (query.state) {
+      const s = query.state.trim();
+      conditions.push({
+        OR: [
+          { state: { contains: s, mode: 'insensitive' } },
+          { location: { contains: s, mode: 'insensitive' } },
+        ],
+      });
+    } else if (query.countryCode) {
+      conditions.push({
+        OR: [
+          { countryCode: query.countryCode },
+          { country: { contains: query.countryCode, mode: 'insensitive' } },
+          { location: { contains: query.countryCode, mode: 'insensitive' } },
+        ],
+      });
+    } else if (query.location) {
+      conditions.push({
+        location: { contains: query.location.trim(), mode: 'insensitive' },
+      });
     }
+
     if (query.search) {
       const s = query.search.trim();
-      where.OR = [
-        { name: { contains: s, mode: 'insensitive' } },
-        { username: { contains: s, mode: 'insensitive' } },
-        { location: { contains: s, mode: 'insensitive' } },
-      ];
+      conditions.push({
+        OR: [
+          { name: { contains: s, mode: 'insensitive' } },
+          { username: { contains: s, mode: 'insensitive' } },
+          { location: { contains: s, mode: 'insensitive' } },
+        ],
+      });
     }
+
+    const where = { AND: conditions };
 
     const [donors, total] = await Promise.all([
       prisma.user.findMany({
@@ -567,6 +631,10 @@ const getAvailableDonors = async (query: IDonorQuery) => {
           username: true,
           avatarUrl: true,
           bloodGroup: true,
+          country: true,
+          countryCode: true,
+          state: true,
+          city: true,
           location: true,
           bio: true,
           isDonor: true,

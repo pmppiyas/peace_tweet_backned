@@ -6,7 +6,11 @@ export interface IUpdateUserInput {
   email?: string;
   avatarUrl?: string;
   coverUrl?: string;
-  location?: string;
+  location?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  state?: string | null;
+  city?: string | null;
   bloodGroup?: BloodGroup;
   bio?: string;
   badge?: string;
