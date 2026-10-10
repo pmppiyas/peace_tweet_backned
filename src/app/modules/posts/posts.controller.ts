@@ -63,7 +63,11 @@ const remove = catchAsync(async (req: Request & { user?: any }, res: Response) =
 });
 
 const savePost = catchAsync(async (req: Request & { user?: any }, res: Response) => {
-  const result = await postsServices.savePost(req.params.postId, req.user.id);
+  const result = await postsServices.savePost(
+    req.params.postId,
+    req.user.id,
+    req.body?.timeSlot,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

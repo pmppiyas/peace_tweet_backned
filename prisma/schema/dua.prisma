@@ -14,7 +14,6 @@ model Dua {
   createdBy  User           @relation("UserCreatedDuas", fields: [createdById], references: [id], onDelete: Restrict)
   references DuaReference[] @relation("DuaReferences")
   audios     DuaAudio[]     @relation("DuaAudios")
-  savedBy    SavedDua[]     @relation("DuaSavedBy")
   posts      Post[]         @relation("DuaPosts")
   shares     Share[]        @relation("DuaShareRecords")
 

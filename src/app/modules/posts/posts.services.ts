@@ -91,15 +91,21 @@ const remove = async (id: string, user: any) => {
   return result;
 };
 
-const savePost = async (postId: string, userId: string) => {
-  const result = await serviceInstance.savePost(postId, userId);
+const savePost = async (postId: string, userId: string, timeSlot?: string) => {
+  const result = await serviceInstance.savePost(postId, userId, timeSlot);
   await invalidatePostCache(postId);
+  try {
+    await cacheService.delPattern(`bookmarks:${userId}:*`);
+  } catch {}
   return result;
 };
 
 const unsavePost = async (postId: string, userId: string) => {
   const result = await serviceInstance.unsavePost(postId, userId);
   await invalidatePostCache(postId);
+  try {
+    await cacheService.delPattern(`bookmarks:${userId}:*`);
+  } catch {}
   return result;
 };
 

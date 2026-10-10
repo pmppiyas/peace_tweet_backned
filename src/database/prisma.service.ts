@@ -41,7 +41,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
     // Clean tables in proper relation order
     await this.$transaction([
-      this.savedDua.deleteMany(),
+      this.savedItem.deleteMany(),
       this.duaAudio.deleteMany(),
       this.duaReference.deleteMany(),
       this.dua.deleteMany(),

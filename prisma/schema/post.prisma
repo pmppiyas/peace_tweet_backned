@@ -24,7 +24,6 @@ model Post {
   group          Group?        @relation("GroupPosts", fields: [groupId], references: [id], onDelete: Cascade)
   comments       Comment[]     @relation("PostComments")
   reactions      Reaction[]    @relation("PostReactions")
-  savedPosts     SavedPost[]   @relation("PostSaved")
 
   originalPost   Post?         @relation("PostReposts", fields: [originalPostId], references: [id], onDelete: SetNull)
   reposts        Post[]        @relation("PostReposts")

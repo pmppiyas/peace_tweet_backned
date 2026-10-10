@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { GroupVisibility } from '../../common/enums/group-visibility.enum';
 import { PostStatus } from '../../common/enums/post-status.enum';
 import { PostType } from '../../common/enums/post-type.enum';
@@ -222,7 +223,6 @@ export class PostsService {
           select: {
             reactions: true,
             comments: true,
-            savedPosts: true,
             shares: true,
             reposts: true,
           },
@@ -332,18 +332,11 @@ export class PostsService {
           select: {
             reactions: true,
             comments: true,
-            savedPosts: true,
             shares: true,
             reposts: true,
           },
         },
         reactions: currentUser?.id
-          ? {
-              where: { userId: currentUser.id },
-              select: { id: true },
-            }
-          : false,
-        savedPosts: currentUser?.id
           ? {
               where: { userId: currentUser.id },
               select: { id: true },
@@ -360,7 +353,47 @@ export class PostsService {
       nextCursor = items[items.length - 1].id;
     }
 
-    const formattedItems = items.map((post: any) => this.formatPostResponse(post, currentUser?.id));
+    const postIds = items.map((p: any) => p.id);
+    const savedMap = new Map<string, string | null>();
+    const saveCountMap = new Map<string, number>();
+
+    if (postIds.length > 0) {
+      const [savedItems, countGroups] = await Promise.all([
+        currentUser?.id
+          ? this.db.savedItem.findMany({
+              where: {
+                userId: currentUser.id,
+                type: 'POST',
+                contentId: { in: postIds },
+              },
+              select: { contentId: true, timeSlot: true },
+            })
+          : Promise.resolve([]),
+        this.db.savedItem.groupBy({
+          by: ['contentId'],
+          where: {
+            type: 'POST',
+            contentId: { in: postIds },
+          },
+          _count: {
+            contentId: true,
+          },
+        }),
+      ]);
+
+      savedItems.forEach((s: any) => savedMap.set(s.contentId, s.timeSlot));
+      countGroups.forEach((c: any) =>
+        saveCountMap.set(c.contentId, c._count.contentId),
+      );
+    }
+
+    const formattedItems = items.map((post: any) =>
+      this.formatPostResponse(post, currentUser?.id, {
+        hasSaved: savedMap.has(post.id),
+        timeSlot: savedMap.get(post.id) || null,
+        saveCount: saveCountMap.get(post.id) || 0,
+      }),
+    );
 
     return {
       items: formattedItems,
@@ -444,18 +477,11 @@ export class PostsService {
           select: {
             reactions: true,
             comments: true,
-            savedPosts: true,
             shares: true,
             reposts: true,
           },
         },
         reactions: currentUser?.id
-          ? {
-              where: { userId: currentUser.id },
-              select: { id: true },
-            }
-          : false,
-        savedPosts: currentUser?.id
           ? {
               where: { userId: currentUser.id },
               select: { id: true },
@@ -480,7 +506,40 @@ export class PostsService {
       await this.verifyGroupPostAccess(post.groupId, currentUser);
     }
 
-    return this.formatPostResponse(post, currentUser?.id);
+    let hasSaved = false;
+    let timeSlot: string | null = null;
+
+    const [savedRecord, saveCount] = await Promise.all([
+      currentUser?.id
+        ? this.db.savedItem.findUnique({
+            where: {
+              userId_type_contentId: {
+                userId: currentUser.id,
+                type: 'POST',
+                contentId: id,
+              },
+            },
+            select: { timeSlot: true },
+          })
+        : Promise.resolve(null),
+      this.db.savedItem.count({
+        where: {
+          type: 'POST',
+          contentId: id,
+        },
+      }),
+    ]);
+
+    if (savedRecord) {
+      hasSaved = true;
+      timeSlot = savedRecord.timeSlot;
+    }
+
+    return this.formatPostResponse(post, currentUser?.id, {
+      hasSaved,
+      timeSlot,
+      saveCount,
+    });
   }
 
   async update(id: string, dto: UpdatePostDto, currentUser: ActiveUserData) {
@@ -566,7 +625,6 @@ export class PostsService {
           select: {
             reactions: true,
             comments: true,
-            savedPosts: true,
             shares: true,
             reposts: true,
           },
@@ -634,6 +692,13 @@ export class PostsService {
       },
     });
 
+    await this.db.savedItem.deleteMany({
+      where: {
+        type: 'POST',
+        contentId: id,
+      },
+    });
+
     await this.db.post.delete({
       where: { id },
     });
@@ -644,7 +709,7 @@ export class PostsService {
     };
   }
 
-  async savePost(postId: string, userId: string) {
+  async savePost(postId: string, userId: string, timeSlot?: string) {
     const post = await this.db.post.findUnique({
       where: { id: postId },
     });
@@ -656,32 +721,163 @@ export class PostsService {
       await this.verifyGroupPostAccess(post.groupId, { id: userId, email: '', role: Role.USER });
     }
 
-    await this.db.savedPost.upsert({
+    const savedRecord = await this.db.savedItem.upsert({
       where: {
-        userId_postId: {
+        userId_type_contentId: {
           userId,
-          postId,
+          type: 'POST',
+          contentId: postId,
         },
       },
       create: {
         userId,
-        postId,
+        type: 'POST',
+        contentId: postId,
+        timeSlot: timeSlot || null,
       },
-      update: {},
+      update: {
+        ...(timeSlot !== undefined ? { timeSlot: timeSlot || null } : {}),
+      },
     });
 
     return {
       success: true,
       hasSaved: true,
+      timeSlot: savedRecord.timeSlot,
       message: 'Post saved successfully.',
     };
   }
 
+  async updatePostTimeSlot(postId: string, userId: string, timeSlot: string | null) {
+    const updated = await this.db.savedItem.upsert({
+      where: {
+        userId_type_contentId: {
+          userId,
+          type: 'POST',
+          contentId: postId,
+        },
+      },
+      create: {
+        userId,
+        type: 'POST',
+        contentId: postId,
+        timeSlot: timeSlot || null,
+      },
+      update: {
+        timeSlot: timeSlot || null,
+      },
+    });
+    return {
+      success: true,
+      timeSlot: updated.timeSlot,
+      message: 'Time slot updated successfully.',
+    };
+  }
+
+  async getSavedPosts(
+    userId: string,
+    query: { page?: number; limit?: number; timeSlot?: string; search?: string },
+  ) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(query.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.SavedItemWhereInput = {
+      userId,
+      type: 'POST',
+    };
+
+    if (query.timeSlot && query.timeSlot !== 'all') {
+      where.timeSlot = query.timeSlot;
+    }
+
+    const [total, savedRecords] = await Promise.all([
+      this.db.savedItem.count({ where }),
+      this.db.savedItem.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { savedAt: 'desc' },
+      }),
+    ]);
+
+    const postIds = savedRecords.map((r: any) => r.contentId);
+    const posts = await this.db.post.findMany({
+      where: {
+        id: { in: postIds },
+        ...(query.search && query.search.trim()
+          ? { content: { contains: query.search.trim(), mode: 'insensitive' } }
+          : {}),
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            avatarUrl: true,
+          },
+        },
+        dua: {
+          include: {
+            category: true,
+            references: {
+              include: {
+                source: true,
+              },
+            },
+            audios: true,
+          },
+        },
+        media: true,
+        _count: {
+          select: {
+            reactions: true,
+            comments: true,
+            shares: true,
+            reposts: true,
+          },
+        },
+        reactions: {
+          where: { userId },
+          select: { type: true },
+        },
+      },
+    });
+
+    const postMap = new Map((posts as any[]).map((p: any) => [p.id, p]));
+    const formattedPosts: any[] = [];
+
+    for (const record of savedRecords as any[]) {
+      const post = postMap.get(record.contentId);
+      if (post) {
+        const formatted = this.formatPostResponse(
+          post,
+          { id: userId, email: '', role: Role.USER } as any,
+          { hasSaved: true, timeSlot: record.timeSlot },
+        );
+        formatted.savedId = record.id;
+        formatted.savedAt = record.savedAt;
+        formattedPosts.push(formatted);
+      }
+    }
+
+    return {
+      data: formattedPosts,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async unsavePost(postId: string, userId: string) {
-    await this.db.savedPost.deleteMany({
+    await this.db.savedItem.deleteMany({
       where: {
         userId,
-        postId,
+        contentId: postId,
       },
     });
 
@@ -903,7 +1099,11 @@ export class PostsService {
     }
   }
 
-  private formatPostResponse(post: any, currentUserId?: string): any {
+  public formatPostResponse(
+    post: any,
+    currentUserId?: string,
+    options?: { hasSaved?: boolean; timeSlot?: string | null; saveCount?: number },
+  ): any {
     return {
       id: post.id,
       groupId: post.groupId || null,
@@ -1015,12 +1215,13 @@ export class PostsService {
       stats: {
         reactionCount: post._count?.reactions || 0,
         commentCount: post._count?.comments || 0,
-        saveCount: post._count?.savedPosts || 0,
+        saveCount: options?.saveCount !== undefined ? options.saveCount : 0,
         shareCount: (post._count?.shares || 0) + (post._count?.reposts || 0),
       },
       viewer: {
         hasReacted: Array.isArray(post.reactions) ? post.reactions.length > 0 : false,
-        hasSaved: Array.isArray(post.savedPosts) ? post.savedPosts.length > 0 : false,
+        hasSaved: options?.hasSaved !== undefined ? options.hasSaved : false,
+        timeSlot: options?.timeSlot !== undefined ? options.timeSlot : null,
       },
     };
   }

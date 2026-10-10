@@ -336,6 +336,7 @@ export class FriendsService {
         name: req.sender.name,
         username: req.sender.username,
         avatar: req.sender.avatarUrl || null,
+        avatarUrl: req.sender.avatarUrl || null,
       },
     }));
 
@@ -392,6 +393,7 @@ export class FriendsService {
         name: req.receiver.name,
         username: req.receiver.username,
         avatar: req.receiver.avatarUrl || null,
+        avatarUrl: req.receiver.avatarUrl || null,
       },
     }));
 
@@ -458,6 +460,7 @@ export class FriendsService {
             name: true,
             username: true,
             avatarUrl: true,
+            coverUrl: true,
           },
         },
         receiver: {
@@ -466,6 +469,7 @@ export class FriendsService {
             name: true,
             username: true,
             avatarUrl: true,
+            coverUrl: true,
           },
         },
       },
@@ -489,6 +493,8 @@ export class FriendsService {
           name: friendUser.name,
           username: friendUser.username,
           avatar: friendUser.avatarUrl || null,
+          avatarUrl: friendUser.avatarUrl || null,
+          coverUrl: friendUser.coverUrl || null,
         },
       };
     });

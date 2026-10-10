@@ -1,0 +1,16 @@
+model SavedItem {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // 'POST' | 'DUA' | 'HADITH'
+  contentId String
+  timeSlot  String?
+  savedAt   DateTime @default(now())
+
+  user      User     @relation("UserSavedItems", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, contentId])
+  @@index([userId, timeSlot])
+  @@index([type, contentId])
+  @@index([userId, savedAt])
+  @@map("saved_items")
+}

@@ -151,7 +151,6 @@ export class DuasService {
               select: {
                 references: true,
                 audios: true,
-                savedBy: true,
               },
             },
           },
@@ -165,14 +164,15 @@ export class DuasService {
     if (currentUser) {
       const savedDuaIds = new Set(
         (
-          await this.prisma.savedDua.findMany({
+          await this.prisma.savedItem.findMany({
             where: {
               userId: currentUser.id,
-              duaId: { in: baseResult.items.map((i: any) => i.id) },
+              type: 'DUA',
+              contentId: { in: baseResult.items.map((i: any) => i.id) },
             },
-            select: { duaId: true },
+            select: { contentId: true },
           })
-        ).map((s) => s.duaId),
+        ).map((s) => s.contentId),
       );
 
       enrichedItems = baseResult.items.map((item: any) => ({
@@ -214,7 +214,6 @@ export class DuasService {
             select: {
               references: true,
               audios: true,
-              savedBy: true,
             },
           },
         },
@@ -230,10 +229,13 @@ export class DuasService {
     }
 
     if (currentUser) {
-      const saved = await this.prisma.savedDua.findFirst({
+      const saved = await this.prisma.savedItem.findUnique({
         where: {
-          duaId: id,
-          userId: currentUser.id,
+          userId_type_contentId: {
+            userId: currentUser.id,
+            type: 'DUA',
+            contentId: id,
+          },
         },
       });
       return {

@@ -966,18 +966,11 @@ export class GroupsService {
           select: {
             reactions: true,
             comments: true,
-            savedPosts: true,
             shares: true,
             reposts: true,
           },
         },
         reactions: currentUserId
-          ? {
-              where: { userId: currentUserId },
-              select: { id: true },
-            }
-          : false,
-        savedPosts: currentUserId
           ? {
               where: { userId: currentUserId },
               select: { id: true },
@@ -1330,12 +1323,12 @@ export class GroupsService {
       stats: {
         reactionCount: post._count?.reactions || 0,
         commentCount: post._count?.comments || 0,
-        saveCount: post._count?.savedPosts || 0,
+        saveCount: 0,
         shareCount: (post._count?.shares || 0) + (post._count?.reposts || 0),
       },
       viewer: {
         hasReacted: Array.isArray(post.reactions) ? post.reactions.length > 0 : false,
-        hasSaved: Array.isArray(post.savedPosts) ? post.savedPosts.length > 0 : false,
+        hasSaved: false,
       },
     };
   }
