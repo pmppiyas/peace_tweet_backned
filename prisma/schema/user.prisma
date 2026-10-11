@@ -6,6 +6,7 @@ model User {
   passwordHash       String?
   needPasswordUpdate Boolean      @default(false)
   facebookId         String?      @unique
+  googleId           String?      @unique
   authProvider AuthProvider @default(LOCAL)
   role         Role         @default(USER)
   userStatus   UserStatus   @default(NON_VERIFIED)

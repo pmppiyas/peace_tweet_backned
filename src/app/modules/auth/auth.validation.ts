@@ -51,3 +51,15 @@ export const facebookLoginZodSchema = z
   .refine((data) => Boolean(data.accessToken || data.code), {
     message: 'Either Facebook authorization code or accessToken is required',
   });
+
+export const googleLoginZodSchema = z
+  .object({
+    accessToken: z.string().min(1).optional(),
+    idToken: z.string().min(1).optional(),
+    code: z.string().min(1).optional(),
+    redirectUri: z.string().url().optional(),
+  })
+  .refine((data) => Boolean(data.accessToken || data.idToken || data.code), {
+    message: 'Google authorization code, idToken, or accessToken is required',
+  });
+

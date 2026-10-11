@@ -59,6 +59,23 @@ const facebookLogin = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const googleLogin = catchAsync(async (req: Request, res: Response) => {
+  const result = await authServices.googleLogin(req.body);
+  if (result.accessToken) {
+    res.cookie('accessToken', result.accessToken, cookieOptions);
+  }
+  if (result.refreshToken) {
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+  }
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Google login successful',
+    data: result,
+  });
+});
+
+
 const refreshTokens = catchAsync(async (req: Request, res: Response) => {
   const result = await authServices.refreshTokens(req.body.refreshToken);
   if (result.accessToken) {
@@ -101,6 +118,7 @@ export const authController = {
   register,
   login,
   facebookLogin,
+  googleLogin,
   refreshTokens,
   logout,
   getMe,

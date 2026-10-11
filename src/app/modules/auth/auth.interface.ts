@@ -25,6 +25,14 @@ export interface IFacebookLoginInput {
   redirectUri?: string;
 }
 
+export interface IGoogleLoginInput {
+  accessToken?: string;
+  idToken?: string;
+  code?: string;
+  redirectUri?: string;
+}
+
+
 export interface IRefreshTokenInput {
   refreshToken: string;
 }
