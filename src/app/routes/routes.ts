@@ -16,6 +16,7 @@ import { searchRoutes } from '../modules/search/search.routes';
 import { notificationsRoutes } from '../modules/notifications/notifications.routes';
 import { sharesRoutes } from '../modules/shares/shares.routes';
 import { chatRoutes } from '../modules/chat/chat.routes';
+import { feedbackRoutes } from '../modules/feedback/feedback.routes';
 
 export const router = Router();
 
@@ -37,6 +38,7 @@ const moduleRouter = [
   { path: '/duas/:duaId/references', route: duaReferencesRoutes },
   { path: '/duas', route: duasRoutes },
   { path: '/search', route: searchRoutes },
+  { path: '/feedback', route: feedbackRoutes },
   { path: '/', route: bookmarksRoutes },
 ];
 

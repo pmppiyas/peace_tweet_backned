@@ -1,0 +1,22 @@
+model FeedbackReport {
+  id          String         @id @default(uuid())
+  userId      String?
+  name        String
+  email       String
+  type        FeedbackType   @default(SUGGESTION)
+  subject     String
+  description String         @db.Text
+  mediaUrls   String[]       @default([])
+  status      FeedbackStatus @default(PENDING)
+  adminNote   String?        @db.Text
+
+  user        User?          @relation("UserFeedbackReports", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("feedback_reports")
+}

@@ -44,6 +44,7 @@ model User {
   conversationsAsP1      Conversation[]     @relation("ConversationParticipantOne")
   conversationsAsP2      Conversation[]     @relation("ConversationParticipantTwo")
   sentMessages           Message[]          @relation("SentMessages")
+  feedbackReports        FeedbackReport[]   @relation("UserFeedbackReports")
 
   @@index([email])
   @@index([username])
