@@ -32,4 +32,11 @@ export class QueryFeedDto {
   @IsOptional()
   @IsEnum(PostType)
   type?: PostType;
+
+  @ApiPropertyOptional({
+    description: 'Filter posts by author ID',
+  })
+  @IsOptional()
+  @IsString()
+  authorId?: string;
 }

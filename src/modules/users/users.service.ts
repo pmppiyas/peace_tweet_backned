@@ -112,7 +112,10 @@ export class UsersService {
 
     // Check username uniqueness if updating username
     if (dto.username !== undefined) {
-      const normalizedUsername = dto.username.trim().toLowerCase();
+      const normalizedUsername = dto.username.trim().toLowerCase().substring(0, 10);
+      if (normalizedUsername.length < 3) {
+        throw new BadRequestException('Username must be at least 3 characters.');
+      }
       const existingUser = await this.prisma.user.findFirst({
         where: {
           username: normalizedUsername,

@@ -72,7 +72,8 @@ export class GroupsController {
     type: PaginatedGroupsResponseDto,
   })
   async getMyGroups(@CurrentUser() user: ActiveUserData, @Query() query: GroupQueryDto) {
-    return this.groupsService.getMyGroups(user.id, query);
+    const targetUserId = (query as any).userId || user.id;
+    return this.groupsService.getMyGroups(targetUserId, query);
   }
 
   // 4. Get group by ID

@@ -55,19 +55,14 @@ const create = async (dto: ICreatePostInput, authorId: string) => {
 };
 
 const getFeed = async (query: IQueryFeed, user?: any) => {
-  const cacheKey = user
-    ? `feed:user:${user.id}:${query.type || 'ALL'}:${query.cursor || 'start'}:${query.limit || 20}`
-    : `feed:public:${query.type || 'ALL'}:${query.cursor || 'start'}:${query.limit || 20}`;
-
-  return cacheService.remember(cacheKey, 30, () =>
-    serviceInstance.getFeed(
-      {
-        cursor: query.cursor,
-        limit: query.limit ? Number(query.limit) : 20,
-        type: query.type as any,
-      },
-      user,
-    ),
+  return serviceInstance.getFeed(
+    {
+      cursor: query.cursor,
+      limit: query.limit ? Number(query.limit) : 20,
+      type: query.type as any,
+      authorId: query.authorId,
+    } as any,
+    user,
   );
 };
 

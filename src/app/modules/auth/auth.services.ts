@@ -23,12 +23,16 @@ const generateUsernameSlug = (name: string): string => {
     .trim()
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_-]/g, '')
-    .substring(0, 20);
+    .substring(0, 10);
 };
 
 const resolveUsername = async (base: string): Promise<string> => {
-  const slug = generateUsernameSlug(base) || 'user';
-  let candidate = slug.length >= 3 ? slug : `${slug}_user`;
+  const rawSlug = generateUsernameSlug(base) || 'user';
+  let slug = rawSlug.substring(0, 10);
+  if (slug.length < 3) {
+    slug = (slug + 'user').substring(0, 10);
+  }
+  let candidate = slug;
   let attempts = 0;
 
   while (attempts < 10) {
@@ -36,12 +40,13 @@ const resolveUsername = async (base: string): Promise<string> => {
       where: { username: candidate },
     });
     if (!conflict) return candidate;
-    const suffix = Math.random().toString(16).substring(2, 6);
-    candidate = `${slug}_${suffix}`;
+    const suffix = Math.floor(100 + Math.random() * 900).toString();
+    const prefix = slug.substring(0, 10 - suffix.length - 1);
+    candidate = `${prefix}_${suffix}`;
     attempts++;
   }
 
-  return `user_${Math.random().toString(16).substring(2, 10)}`;
+  return `u_${Math.random().toString(36).substring(2, 9)}`;
 };
 
 const createAuthTokens = (userId: string, email: string, username: string, role: Role) => {
@@ -73,7 +78,7 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
   }
 
   const resolvedUsername = dto.username
-    ? dto.username.toLowerCase().trim()
+    ? dto.username.toLowerCase().trim().substring(0, 10)
     : await resolveUsername(dto.name);
 
   if (dto.username) {

@@ -5,9 +5,9 @@ export const updateUserZodSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   username: z
     .string()
-    .min(3)
-    .max(30)
-    .regex(/^[a-zA-Z0-9_-]+$/)
+    .min(3, 'Username must be at least 3 characters long')
+    .max(10, 'Username must not exceed 10 characters')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain alphanumeric characters, underscores and hyphens')
     .optional(),
   email: z.string().email().optional(),
   avatarUrl: z.string().optional().nullable(),

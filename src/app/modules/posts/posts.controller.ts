@@ -16,6 +16,9 @@ const create = catchAsync(async (req: Request & { user?: any }, res: Response) =
 });
 
 const getFeed = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   const query = queryPick(req.query as Record<string, unknown>, [
     'cursor',
     'limit',

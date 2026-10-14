@@ -646,7 +646,10 @@ export class PostsService {
     });
 
     if (!post) {
-      throw new NotFoundException(`Post with ID '${id}' not found.`);
+      return {
+        success: true,
+        message: 'Post already deleted or does not exist.',
+      };
     }
 
     if (post.authorId !== currentUser.id && currentUser.role !== Role.ADMIN) {
@@ -698,6 +701,14 @@ export class PostsService {
         contentId: id,
       },
     });
+
+    try {
+      await this.db.notification.deleteMany({
+        where: {
+          entityId: id,
+        },
+      });
+    } catch {}
 
     await this.db.post.delete({
       where: { id },

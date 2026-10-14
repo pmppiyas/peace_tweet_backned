@@ -37,8 +37,10 @@ const getMyGroups = catchAsync(async (req: Request & { user?: any }, res: Respon
     'limit',
     'search',
     'visibility',
+    'userId',
   ]);
-  const result = await groupsServices.getMyGroups(req.user.id, query);
+  const targetUserId = (query.userId as string) || req.user.id;
+  const result = await groupsServices.getMyGroups(targetUserId, query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

@@ -28,23 +28,27 @@ export class AuthService {
       .trim()
       .replace(/\s+/g, '_')
       .replace(/[^a-z0-9_-]/g, '')
-      .substring(0, 20);
+      .substring(0, 10);
   }
 
-  // Produce a unique username, appending a random hex suffix when needed
+  // Produce a unique username, appending a suffix when needed (strictly <= 10 chars)
   private async resolveUsername(base: string): Promise<string> {
-    const slug = this.generateUsernameSlug(base) || 'user';
+    const rawSlug = this.generateUsernameSlug(base) || 'user';
+    let slug = rawSlug.substring(0, 10);
+    if (slug.length < 3) {
+      slug = (slug + 'user').substring(0, 10);
+    }
     let candidate = slug;
     let attempts = 0;
     while (attempts < 10) {
       const conflict = await this.prisma.user.findUnique({ where: { username: candidate } });
       if (!conflict) return candidate;
-      const suffix = Math.random().toString(16).substring(2, 6);
-      candidate = `${slug}_${suffix}`;
+      const suffix = Math.floor(100 + Math.random() * 900).toString();
+      const prefix = slug.substring(0, 10 - suffix.length - 1);
+      candidate = `${prefix}_${suffix}`;
       attempts++;
     }
-    // Fallback: full random username
-    return `user_${Math.random().toString(16).substring(2, 10)}`;
+    return `u_${Math.random().toString(36).substring(2, 9)}`;
   }
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -57,7 +61,7 @@ export class AuthService {
 
     // Use provided username or auto-generate from name
     const resolvedUsername = dto.username
-      ? dto.username.toLowerCase().trim()
+      ? dto.username.toLowerCase().trim().substring(0, 10)
       : await this.resolveUsername(dto.name);
 
     // If user explicitly supplied a username, check uniqueness

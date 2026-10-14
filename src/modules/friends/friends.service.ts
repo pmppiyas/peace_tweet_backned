@@ -461,6 +461,13 @@ export class FriendsService {
             username: true,
             avatarUrl: true,
             coverUrl: true,
+            _count: {
+              select: {
+                posts: true,
+                sentFriendships: { where: { status: FriendshipStatus.ACCEPTED } },
+                receivedFriendships: { where: { status: FriendshipStatus.ACCEPTED } },
+              },
+            },
           },
         },
         receiver: {
@@ -470,6 +477,13 @@ export class FriendsService {
             username: true,
             avatarUrl: true,
             coverUrl: true,
+            _count: {
+              select: {
+                posts: true,
+                sentFriendships: { where: { status: FriendshipStatus.ACCEPTED } },
+                receivedFriendships: { where: { status: FriendshipStatus.ACCEPTED } },
+              },
+            },
           },
         },
       },
@@ -495,6 +509,10 @@ export class FriendsService {
           avatar: friendUser.avatarUrl || null,
           avatarUrl: friendUser.avatarUrl || null,
           coverUrl: friendUser.coverUrl || null,
+          friendsCount:
+            (friendUser._count?.sentFriendships || 0) +
+            (friendUser._count?.receivedFriendships || 0),
+          postCount: friendUser._count?.posts || 0,
         },
       };
     });

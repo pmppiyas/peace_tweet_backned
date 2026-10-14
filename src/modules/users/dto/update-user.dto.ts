@@ -25,7 +25,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @MinLength(3)
-  @MaxLength(30)
+  @MaxLength(10)
   @Matches(/^[a-zA-Z0-9_-]+$/, {
     message: 'Username can only contain alphanumeric characters, underscores and hyphens',
   })
