@@ -174,7 +174,6 @@ export class PostsService {
             },
             dua: {
               include: {
-                category: true,
                 references: {
                   include: {
                     source: true,
@@ -282,7 +281,6 @@ export class PostsService {
             },
             dua: {
               include: {
-                category: true,
                 references: {
                   include: {
                     source: true,
@@ -426,7 +424,6 @@ export class PostsService {
             },
             dua: {
               include: {
-                category: true,
                 references: {
                   include: {
                     source: true,
@@ -573,7 +570,6 @@ export class PostsService {
             },
             dua: {
               include: {
-                category: true,
                 references: {
                   include: {
                     source: true,

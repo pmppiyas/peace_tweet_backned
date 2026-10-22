@@ -937,7 +937,6 @@ export class GroupsService {
             },
             dua: {
               include: {
-                category: true,
                 references: {
                   include: {
                     source: true,

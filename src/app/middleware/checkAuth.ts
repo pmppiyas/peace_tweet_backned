@@ -29,11 +29,11 @@ export const checkAuth =
       });
 
       if (!isUserExist) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'User does not exist!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'User does not exist!');
       }
 
       if ((isUserExist as any).status === 'INACTIVE' || (isUserExist as any).status === 'BLOCKED') {
-        throw new AppError(httpStatus.BAD_REQUEST, `User account is inactive`);
+        throw new AppError(httpStatus.UNAUTHORIZED, `User account is inactive`);
       }
 
       if (authRoles.length && !authRoles.includes(verifiedToken.role)) {
