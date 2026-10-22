@@ -151,7 +151,6 @@ const getUnifiedSaved = async (userId: string, query: IBookmarkQuery) => {
               },
               dua: {
                 include: {
-                  category: true,
                   references: { include: { source: true } },
                   audios: true,
                 },
@@ -163,7 +162,6 @@ const getUnifiedSaved = async (userId: string, query: IBookmarkQuery) => {
                   },
                   dua: {
                     include: {
-                      category: true,
                       references: { include: { source: true } },
                       audios: true,
                     },
@@ -214,7 +212,6 @@ const getUnifiedSaved = async (userId: string, query: IBookmarkQuery) => {
                 : {}),
             },
             include: {
-              category: true,
               references: { include: { source: true } },
               audios: true,
               createdBy: { select: { id: true, name: true, username: true } },
@@ -279,7 +276,6 @@ const getUnifiedSaved = async (userId: string, query: IBookmarkQuery) => {
               transliteration: d.transliteration,
               meaningBangla: d.meaningBangla,
               arabicText: d.arabicText,
-              category: d.category,
               references: d.references || [],
               audios: d.audios || [],
               audioUrl: d.audios?.[0]?.audioUrl || null,

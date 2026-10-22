@@ -58,14 +58,18 @@ const getSentRequests = async (userId: string, query: IFriendQuery) => {
   );
 };
 
-const getFriends = async (userId: string, query: IFriendQuery) => {
-  const cacheKey = `friends:list:${userId}:${query.cursor || 'start'}:${query.limit || 20}:${query.search || ''}`;
+const getFriends = async (userId: string, query: IFriendQuery, viewerId?: string) => {
+  const cacheKey = `friends:list:${userId}:${viewerId || 'anon'}:${query.cursor || 'start'}:${query.limit || 20}:${query.search || ''}`;
   return cacheService.remember(cacheKey, 120, () =>
-    serviceInstance.getFriends(userId, {
-      cursor: query.cursor,
-      limit: query.limit ? Number(query.limit) : 20,
-      search: query.search,
-    }),
+    serviceInstance.getFriends(
+      userId,
+      {
+        cursor: query.cursor,
+        limit: query.limit ? Number(query.limit) : 20,
+        search: query.search,
+      },
+      viewerId,
+    ),
   );
 };
 

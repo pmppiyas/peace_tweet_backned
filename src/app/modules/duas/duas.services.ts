@@ -14,7 +14,6 @@ const findAll = (query: any, user?: any) =>
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 12,
       search: query.search,
-      categoryId: query.categoryId,
       status: query.status,
     },
     user,

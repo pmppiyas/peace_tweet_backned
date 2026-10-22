@@ -1,11 +1,10 @@
 import { v2 as cloudinary, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
-import * as fs from 'fs';
 import httpStatus from 'http-status-codes';
-import * as path from 'path';
 import { envVar } from '../../config/env';
 import AppError from '../../utils/appError';
 import { IUploadResult } from './uploads.interface';
 
+// Validate and initialize Cloudinary configuration
 const isConfigured = Boolean(
   envVar.CLOUDINARY_CLOUD_NAME && envVar.CLOUDINARY_API_KEY && envVar.CLOUDINARY_API_SECRET,
 );
@@ -19,16 +18,28 @@ if (isConfigured) {
   });
 }
 
+/**
+ * Upload a single image file exclusively to Cloudinary using upload_stream.
+ */
 const uploadImage = async (
   file: Express.Multer.File | undefined,
   folder = 'peacetweet/uploads',
 ): Promise<IUploadResult> => {
+  // 1. Ensure Cloudinary credentials are configured
+  if (!isConfigured) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Cloudinary is not configured. Missing CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET.',
+    );
+  }
+
+  // 2. Validate file existence and buffer
   if (!file || !file.buffer) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No image file provided for upload');
   }
 
+  // 3. Validate image MIME type
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-
   if (!allowedMimeTypes.includes(file.mimetype)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -36,54 +47,46 @@ const uploadImage = async (
     );
   }
 
-  if (isConfigured) {
-    return new Promise<IUploadResult>((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: 'image',
-        },
-        (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
-          if (error) {
-            return reject(
-              new AppError(httpStatus.BAD_REQUEST, `Cloudinary upload failed: ${error.message}`),
-            );
-          }
-          if (!result) {
-            return reject(
-              new AppError(httpStatus.BAD_REQUEST, 'Cloudinary upload returned empty response'),
-            );
-          }
-          resolve({
-            url: result.secure_url || result.url,
-            publicId: result.public_id,
-          });
-        },
-      );
+  // 4. Stream upload to Cloudinary
+  return new Promise<IUploadResult>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'image',
+      },
+      (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+        if (error) {
+          return reject(
+            new AppError(
+              httpStatus.BAD_REQUEST,
+              `Cloudinary upload failed: ${error.message || 'Unknown error'}`,
+            ),
+          );
+        }
+        if (!result) {
+          return reject(
+            new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Cloudinary returned an empty response'),
+          );
+        }
 
-      uploadStream.end(file.buffer);
-    });
-  }
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          format: result.format,
+          bytes: result.bytes,
+          width: result.width,
+          height: result.height,
+        });
+      },
+    );
 
-  try {
-    const uploadDir = path.resolve(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const safeFilename = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const destination = path.join(uploadDir, safeFilename);
-    fs.writeFileSync(destination, file.buffer);
-
-    return {
-      url: `/uploads/${safeFilename}`,
-      publicId: safeFilename,
-    };
-  } catch {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Failed to process image upload');
-  }
+    uploadStream.end(file.buffer);
+  });
 };
 
+/**
+ * Upload multiple images concurrently to Cloudinary.
+ */
 const uploadMultipleImages = async (
   files: Express.Multer.File[] | undefined,
   folder = 'peacetweet/uploads',
@@ -92,11 +95,29 @@ const uploadMultipleImages = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'No image files provided for upload');
   }
 
-  const results = await Promise.all(files.map((file) => uploadImage(file, folder)));
-  return results;
+  return Promise.all(files.map((file) => uploadImage(file, folder)));
+};
+
+/**
+ * Delete an image from Cloudinary by its publicId.
+ */
+const deleteImage = async (publicId: string): Promise<void> => {
+  if (!isConfigured) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Cloudinary is not configured.',
+    );
+  }
+
+  if (!publicId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Public ID is required to delete image');
+  }
+
+  await cloudinary.uploader.destroy(publicId);
 };
 
 export const uploadsServices = {
   uploadImage,
   uploadMultipleImages,
+  deleteImage,
 };

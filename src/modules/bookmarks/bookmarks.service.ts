@@ -12,7 +12,6 @@ export class BookmarksService {
   async saveDua(userId: string, duaId: string, timeSlot?: string) {
     const dua = await this.prisma.dua.findUnique({
       where: { id: duaId },
-      include: { category: true },
     });
     if (!dua) {
       throw new NotFoundException(`Dua with ID '${duaId}' not found.`);
@@ -146,7 +145,6 @@ export class BookmarksService {
           : {}),
       },
       include: {
-        category: true,
         references: {
           include: {
             source: true,

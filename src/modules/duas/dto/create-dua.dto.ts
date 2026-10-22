@@ -68,14 +68,6 @@ export class CreateDuaDto {
   arabicText?: string;
 
   @ApiPropertyOptional({
-    example: 'c6f6f1c4-1234-4b56-789a-0123456789ab',
-    description: 'ID of Category (optional - auto-categorized if not provided)',
-  })
-  @IsOptional()
-  @IsUUID('4', { message: 'categoryId must be a valid UUID' })
-  categoryId?: string;
-
-  @ApiPropertyOptional({
     enum: DuaStatus,
     default: DuaStatus.DRAFT,
     example: DuaStatus.PUBLISHED,

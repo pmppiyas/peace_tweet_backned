@@ -68,7 +68,7 @@ export const envConfig = (): EnvConfig => {
       groupId: process.env.KAFKA_GROUP_ID || '',
     },
     media: {
-      uploadDir: process.env.MEDIA_UPLOAD_DIR || '',
+      uploadDir: process.env.MEDIA_UPLOAD_DIR || './uploads',
     },
     admin: {
       email: adminEmail,

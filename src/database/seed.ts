@@ -3,7 +3,7 @@ dotenv.config();
 
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { SEED_ADMIN_USER, SEED_CATEGORIES, SEED_DUAS, SEED_SOURCES } from '../data/seed-data';
+import { SEED_ADMIN_USER, SEED_DUAS, SEED_SOURCES } from '../data/seed-data';
 
 const prisma = new PrismaClient();
 
@@ -35,29 +35,6 @@ async function main() {
     `⚠️  Credentials: Email: ${admin.email} | Password: ${SEED_ADMIN_USER.plainPassword}\n`,
   );
 
-  // 2. Seed Categories
-  console.log('--- Seeding Categories ---');
-  const categoryMap = new Map<string, string>();
-  for (const cat of SEED_CATEGORIES) {
-    const createdCategory = await prisma.category.upsert({
-      where: { slug: cat.slug },
-      update: {
-        name: cat.name,
-        description: cat.description,
-        sortOrder: cat.sortOrder,
-      },
-      create: {
-        name: cat.name,
-        slug: cat.slug,
-        description: cat.description,
-        sortOrder: cat.sortOrder,
-      },
-    });
-    categoryMap.set(cat.slug, createdCategory.id);
-    console.log(`✅ Category seeded: ${cat.name} (${cat.slug})`);
-  }
-  console.log('');
-
   // 3. Seed Sources
   console.log('--- Seeding Sources ---');
   const sourceMap = new Map<string, string>();
@@ -87,12 +64,6 @@ async function main() {
   // 4. Seed Sample Duas, References, and Audios
   console.log('--- Seeding Sample Duas, References & Audios ---');
   for (const duaData of SEED_DUAS) {
-    const categoryId = categoryMap.get(duaData.categorySlug);
-    if (!categoryId) {
-      console.warn(`⚠️ Category with slug '${duaData.categorySlug}' not found. Skipping.`);
-      continue;
-    }
-
     const existingDua = await prisma.dua.findFirst({
       where: { meaning: duaData.meaningBangla },
     });
@@ -109,7 +80,6 @@ async function main() {
           meaning: duaData.meaningBangla,
           fadilah: duaData.fadilah,
           status: duaData.status,
-          categoryId: categoryId,
           createdById: admin.id,
         },
       });

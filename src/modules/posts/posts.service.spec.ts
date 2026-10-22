@@ -35,7 +35,6 @@ describe('PostsService', () => {
     transliteration: 'হে আল্লাহ আমাকে সঠিক পথ দেখাও',
     references: [],
     audios: [],
-    category: { id: 'cat-1', name: 'Daily', slug: 'daily' },
   };
 
   const mockPost = {

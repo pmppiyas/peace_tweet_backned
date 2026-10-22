@@ -12,5 +12,6 @@ const upload = multer({
 router.post('/image', upload.single('file'), uploadsController.uploadImage);
 router.post('/images', upload.array('files', 10), uploadsController.uploadMultipleImages);
 router.post('/avatar', checkAuth(), upload.single('file'), uploadsController.uploadAvatar);
+router.delete('/', checkAuth(), uploadsController.deleteImage);
 
 export const uploadsRoutes = router;

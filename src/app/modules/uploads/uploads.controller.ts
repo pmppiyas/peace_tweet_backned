@@ -36,8 +36,20 @@ const uploadMultipleImages = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteImage = catchAsync(async (req: Request, res: Response) => {
+  const publicId = (req.body.publicId || req.query.publicId) as string;
+  await uploadsServices.deleteImage(publicId);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Image deleted successfully from Cloudinary',
+    data: null,
+  });
+});
+
 export const uploadsController = {
   uploadImage,
   uploadMultipleImages,
   uploadAvatar,
+  deleteImage,
 };

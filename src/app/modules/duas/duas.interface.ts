@@ -7,7 +7,6 @@ export interface ICreateDuaInput {
   meaning?: string;
   fadilah?: string;
   arabicText?: string;
-  categoryId?: string;
   status?: DuaStatus;
   duaBangla?: string; // Legacy alias mapped to transliteration
 }
@@ -19,7 +18,6 @@ export interface IUpdateDuaInput {
   meaning?: string;
   fadilah?: string;
   arabicText?: string;
-  categoryId?: string;
   status?: DuaStatus;
   duaBangla?: string; // Legacy alias mapped to transliteration
 }

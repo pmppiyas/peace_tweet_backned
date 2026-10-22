@@ -1,24 +1,15 @@
-import { CategoriesService } from '../../../modules/categories/categories.service';
-import { cacheService } from '../../config/cache';
-import { prisma } from '../../config/prisma';
-import { ICreateCategoryInput, IUpdateCategoryInput } from './categories.interface';
+const create = async (_dto: any) => ({ message: 'Categories feature disabled' });
 
-const serviceInstance = new CategoriesService(prisma as any, cacheService as any);
+const findAll = async (_query: any) => ({
+  data: [],
+  meta: { page: 1, limit: 50, total: 0, totalPages: 0 },
+});
 
-const create = (dto: ICreateCategoryInput) => serviceInstance.create(dto as any);
+const findOne = async (_idOrSlug: string) => null;
 
-const findAll = (query: any) =>
-  serviceInstance.findAll({
-    page: query.page ? Number(query.page) : 1,
-    limit: query.limit ? Number(query.limit) : 50,
-    search: query.search,
-  });
+const update = async (_id: string, _dto: any) => ({ message: 'Categories feature disabled' });
 
-const findOne = (idOrSlug: string) => serviceInstance.findOne(idOrSlug);
-
-const update = (id: string, dto: IUpdateCategoryInput) => serviceInstance.update(id, dto as any);
-
-const remove = (id: string) => serviceInstance.remove(id);
+const remove = async (_id: string) => ({ message: 'Categories feature disabled' });
 
 export const categoriesServices = {
   create,

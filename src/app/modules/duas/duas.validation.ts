@@ -10,7 +10,6 @@ export const createDuaZodSchema = z
     meaning: z.string().optional(),
     fadilah: z.string().optional(),
     arabicText: z.string().optional(),
-    categoryId: z.string().uuid('categoryId must be a valid UUID').optional(),
     status: z.nativeEnum(DuaStatus).optional(),
   })
   .refine(
@@ -36,6 +35,5 @@ export const updateDuaZodSchema = z.object({
   meaning: z.string().optional(),
   fadilah: z.string().optional(),
   arabicText: z.string().optional(),
-  categoryId: z.string().uuid().optional(),
   status: z.nativeEnum(DuaStatus).optional(),
 });

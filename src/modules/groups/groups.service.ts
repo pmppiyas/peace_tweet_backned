@@ -904,7 +904,6 @@ export class GroupsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,
@@ -1048,7 +1047,6 @@ export class GroupsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,
@@ -1290,13 +1288,6 @@ export class GroupsService {
             transliteration: post.dua.transliteration,
             meaningBangla: post.dua.meaningBangla,
             arabicText: post.dua.arabicText,
-            category: post.dua.category
-              ? {
-                  id: post.dua.category.id,
-                  name: post.dua.category.name,
-                  slug: post.dua.category.slug,
-                }
-              : null,
             references:
               post.dua.references?.map((r: any) => ({
                 id: r.id,

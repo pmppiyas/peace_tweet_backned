@@ -58,13 +58,6 @@ const searchGlobal = async (params: SearchQueryParams) => {
             meaning: true,
             transliteration: true,
             arabicText: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
           },
           take: limit,
         })

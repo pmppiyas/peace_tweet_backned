@@ -12,7 +12,6 @@ import { PostVisibility } from '../../common/enums/post-visibility.enum';
 import { Role } from '../../common/enums/role.enum';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 import { PrismaService } from '../../database/prisma.service';
-import { autoCategorizeDua } from '../../app/modules/duas/utils/dua-categorizer';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { QueryFeedDto } from './dto/query-feed.dto';
@@ -45,31 +44,12 @@ export class PostsService {
         const fadilah = dto.duaData.fadilah ? dto.duaData.fadilah.trim() : null;
         const arabicText = dto.duaData.arabicText ? dto.duaData.arabicText.trim() : null;
 
-        const detectedSlug = autoCategorizeDua({
-          meaning,
-          transliteration,
-          fadilah,
-        });
-
-        let category = await this.prisma.category.findUnique({
-          where: { slug: detectedSlug },
-        });
-        if (!category) {
-          category = await this.prisma.category.findUnique({
-            where: { slug: 'others' },
-          });
-        }
-        if (!category) {
-          category = await this.prisma.category.findFirst();
-        }
-
         const createdDua = await this.prisma.dua.create({
           data: {
             transliteration: transliteration || null,
             meaning,
             fadilah,
             arabicText,
-            categoryId: category!.id,
             createdById: authorId,
             status: 'PUBLISHED',
           },
@@ -161,7 +141,6 @@ export class PostsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,
@@ -270,7 +249,6 @@ export class PostsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,
@@ -415,7 +393,6 @@ export class PostsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,
@@ -576,7 +553,6 @@ export class PostsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,
@@ -831,7 +807,6 @@ export class PostsService {
         },
         dua: {
           include: {
-            category: true,
             references: {
               include: {
                 source: true,

@@ -404,7 +404,11 @@ export class FriendsService {
   }
 
   // Retrieve user's friends list with search and cursor pagination
-  async getFriends(userId: string, query: FriendQueryDto): Promise<PaginatedFriendsResponse> {
+  async getFriends(
+    userId: string,
+    query: FriendQueryDto,
+    viewerId?: string,
+  ): Promise<PaginatedFriendsResponse> {
     const limit = query.limit || DEFAULT_FRIENDS_LIMIT;
     const searchFilter = query.search?.trim();
 
@@ -495,6 +499,109 @@ export class FriendsService {
       nextCursor = friendships[friendships.length - 1]?.id || null;
     }
 
+    const friendUsers = friendships.map((f: any) => {
+      const isSender = f.senderId === userId;
+      return isSender ? f.receiver : f.sender;
+    });
+    const friendIds = friendUsers.map((u: any) => u.id);
+
+    const relationshipMap: Record<string, { status: RelationshipStatus; requestId: string | null }> = {};
+    const mutualCountsMap: Record<string, number> = {};
+
+    for (const fId of friendIds) {
+      relationshipMap[fId] = {
+        status: viewerId === fId ? RelationshipStatus.SELF : RelationshipStatus.NONE,
+        requestId: null,
+      };
+      mutualCountsMap[fId] = 0;
+    }
+
+    if (viewerId) {
+      // 1. Get viewer's accepted friends
+      const myAcceptedFriendships = await this.prisma.friendship.findMany({
+        where: {
+          status: FriendshipStatus.ACCEPTED,
+          OR: [{ senderId: viewerId }, { receiverId: viewerId }],
+        },
+        select: { id: true, senderId: true, receiverId: true },
+      });
+
+      const myFriendIds = new Set<string>();
+      for (const maf of myAcceptedFriendships) {
+        const other = maf.senderId === viewerId ? maf.receiverId : maf.senderId;
+        myFriendIds.add(other);
+      }
+
+      // 2. Viewer's relationship with each friend in this page
+      const viewerFriendships = await this.prisma.friendship.findMany({
+        where: {
+          OR: [
+            { senderId: viewerId, receiverId: { in: friendIds } },
+            { senderId: { in: friendIds }, receiverId: viewerId },
+          ],
+        },
+      });
+
+      for (const fId of friendIds) {
+        if (fId === viewerId) {
+          relationshipMap[fId] = { status: RelationshipStatus.SELF, requestId: null };
+          continue;
+        }
+
+        const match = viewerFriendships.find(
+          (vf: any) =>
+            (vf.senderId === viewerId && vf.receiverId === fId) ||
+            (vf.senderId === fId && vf.receiverId === viewerId),
+        );
+
+        if (!match) {
+          relationshipMap[fId] = { status: RelationshipStatus.NONE, requestId: null };
+        } else if (match.status === FriendshipStatus.ACCEPTED) {
+          relationshipMap[fId] = { status: RelationshipStatus.FRIENDS, requestId: match.id };
+        } else if (match.status === FriendshipStatus.PENDING) {
+          relationshipMap[fId] = {
+            status:
+              match.senderId === viewerId
+                ? RelationshipStatus.PENDING_SENT
+                : RelationshipStatus.PENDING_RECEIVED,
+            requestId: match.id,
+          };
+        } else {
+          relationshipMap[fId] = { status: RelationshipStatus.NONE, requestId: null };
+        }
+      }
+
+      // 3. Mutual friends count between viewer and each friend
+      const myFriendIdsArray = Array.from(myFriendIds);
+      if (myFriendIdsArray.length > 0 && friendIds.length > 0) {
+        const mutualFriendships = await this.prisma.friendship.findMany({
+          where: {
+            status: FriendshipStatus.ACCEPTED,
+            OR: [
+              {
+                senderId: { in: friendIds },
+                receiverId: { in: myFriendIdsArray },
+              },
+              {
+                senderId: { in: myFriendIdsArray },
+                receiverId: { in: friendIds },
+              },
+            ],
+          },
+          select: { senderId: true, receiverId: true },
+        });
+
+        for (const m of mutualFriendships) {
+          const isSenderTarget = friendIds.includes(m.senderId);
+          const fId = isSenderTarget ? m.senderId : m.receiverId;
+          const otherId = isSenderTarget ? m.receiverId : m.senderId;
+          if (myFriendIds.has(otherId) && otherId !== viewerId && otherId !== fId) {
+            mutualCountsMap[fId] = (mutualCountsMap[fId] || 0) + 1;
+          }
+        }
+      }
+    }
+
     const items = friendships.map((f: any) => {
       const isSender = f.senderId === userId;
       const friendUser = isSender ? f.receiver : f.sender;
@@ -513,6 +620,11 @@ export class FriendsService {
             (friendUser._count?.sentFriendships || 0) +
             (friendUser._count?.receivedFriendships || 0),
           postCount: friendUser._count?.posts || 0,
+          mutualFriendsCount: mutualCountsMap[friendUser.id] ?? 0,
+          relationship: relationshipMap[friendUser.id] ?? {
+            status: friendUser.id === viewerId ? RelationshipStatus.SELF : RelationshipStatus.NONE,
+            requestId: null,
+          },
         },
       };
     });

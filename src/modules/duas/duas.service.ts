@@ -7,7 +7,6 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { buildPaginationMeta, calculatePagination } from '../../common/utils/pagination.util';
 import { PrismaService } from '../../database/prisma.service';
 import { CacheService } from '../../cache/cache.service';
-import { autoCategorizeDua } from '../../app/modules/duas/utils/dua-categorizer';
 import { CreateDuaDto } from './dto/create-dua.dto';
 import { QueryDuaDto } from './dto/query-dua.dto';
 import { UpdateDuaDto } from './dto/update-dua.dto';
@@ -25,56 +24,16 @@ export class DuasService {
     const fadilah = dto.fadilah ? dto.fadilah.trim() : null;
     const arabicText = dto.arabicText ? dto.arabicText.trim() : null;
 
-    let categoryId = dto.categoryId;
-
-    if (categoryId) {
-      const categoryExists = await this.prisma.category.findUnique({
-        where: { id: categoryId },
-      });
-      if (!categoryExists) {
-        throw new BadRequestException(`Category with ID '${categoryId}' does not exist.`);
-      }
-    } else {
-      // Non-LLM rule & root-based auto-categorization
-      const detectedSlug = autoCategorizeDua({
-        meaning: meaningBangla,
-        transliteration,
-        fadilah,
-      });
-
-      let category = await this.prisma.category.findUnique({
-        where: { slug: detectedSlug },
-      });
-
-      if (!category) {
-        category = await this.prisma.category.findUnique({
-          where: { slug: 'others' },
-        });
-      }
-
-      if (!category) {
-        category = await this.prisma.category.findFirst();
-      }
-
-      if (!category) {
-        throw new BadRequestException('No category found in database for categorization.');
-      }
-
-      categoryId = category.id;
-    }
-
     const created = await this.prisma.dua.create({
       data: {
         fadilah,
         meaning: meaningBangla,
         arabicText,
         transliteration: transliteration || null,
-        categoryId,
         createdById,
         status: dto.status ?? DuaStatus.PUBLISHED,
       },
       include: {
-        category: true,
         createdBy: {
           select: {
             id: true,
@@ -86,7 +45,6 @@ export class DuasService {
       },
     });
 
-    await this.cache.delPattern('categories:*');
     await this.cache.delPattern('duas:*');
     return created;
   }
@@ -112,20 +70,6 @@ export class DuasService {
         where.status = DuaStatus.PUBLISHED;
       }
 
-      if (query.categoryId) {
-        where.categoryId = query.categoryId;
-      }
-
-      if (query.search) {
-        const search = query.search.trim();
-        where.OR = [
-          { transliteration: { contains: search, mode: 'insensitive' } },
-          { meaning: { contains: search, mode: 'insensitive' } },
-          { fadilah: { contains: search, mode: 'insensitive' } },
-          { arabicText: { contains: search, mode: 'insensitive' } },
-        ];
-      }
-
       const [total, items] = await Promise.all([
         this.prisma.dua.count({ where }),
         this.prisma.dua.findMany({
@@ -134,13 +78,6 @@ export class DuasService {
           take: limit,
           orderBy: { [sortBy]: sortOrder },
           include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
             references: {
               include: {
                 source: true,
@@ -196,7 +133,6 @@ export class DuasService {
       return await this.prisma.dua.findUnique({
         where: { id },
         include: {
-          category: true,
           createdBy: {
             select: {
               id: true,
@@ -256,15 +192,6 @@ export class DuasService {
       throw new NotFoundException(`Dua with ID '${id}' not found.`);
     }
 
-    if (dto.categoryId && dto.categoryId !== existing.categoryId) {
-      const categoryExists = await this.prisma.category.findUnique({
-        where: { id: dto.categoryId },
-      });
-      if (!categoryExists) {
-        throw new BadRequestException(`Category with ID '${dto.categoryId}' does not exist.`);
-      }
-    }
-
     const updated = await this.prisma.dua.update({
       where: { id },
       data: {
@@ -278,11 +205,9 @@ export class DuasService {
           meaning: (dto.meaning || dto.meaningBangla)!.trim(),
         }),
         ...(dto.arabicText !== undefined && { arabicText: dto.arabicText?.trim() }),
-        ...(dto.categoryId && { categoryId: dto.categoryId }),
         ...(dto.status && { status: dto.status }),
       },
       include: {
-        category: true,
         references: {
           include: { source: true },
         },
@@ -290,7 +215,6 @@ export class DuasService {
       },
     });
 
-    await this.cache.delPattern('categories:*');
     await this.cache.delPattern('duas:*');
     return updated;
   }

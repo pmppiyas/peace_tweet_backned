@@ -70,7 +70,7 @@ const getSentRequests = catchAsync(async (req: Request & { user?: any }, res: Re
 const getFriends = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const query = queryPick(req.query as Record<string, unknown>, ['cursor', 'limit', 'search', 'userId']);
   const targetUserId = (query.userId as string) || req.user.id;
-  const result = await friendsServices.getFriends(targetUserId, query as any);
+  const result = await friendsServices.getFriends(targetUserId, query as any, req.user?.id);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
