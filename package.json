@@ -6,7 +6,8 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "tsx src/server.ts",
     "start:dev": "tsx watch src/server.ts",

@@ -24,6 +24,9 @@ jobs:
               cd peacetweet_backend
             fi
             git pull origin main
+            rm -f prisma/schema/category.prisma
             npm install
+            npx prisma generate
+            npx prisma db push --accept-data-loss
             npm run build
             pm2 restart peacetweet-backend
