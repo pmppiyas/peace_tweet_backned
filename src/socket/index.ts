@@ -288,3 +288,130 @@ export const getIO = (): SocketIOServer => {
   }
   return io;
 };
+
+export const getSafeIO = (): SocketIOServer | null => io;
+
+/**
+ * Emit a new notification to a specific user
+ */
+export const emitNotificationToUser = (recipientId: string, notification: any) => {
+  try {
+    if (!io || !recipientId) return;
+    io.to(`user:${recipientId}`).emit('notification:received', notification);
+    io.to(`user:${recipientId}`).emit('notification:new', notification);
+  } catch (err: any) {
+    console.warn('Socket error on emitNotificationToUser:', err?.message);
+  }
+};
+
+/**
+ * Emit updated unread notification count to a specific user
+ */
+export const emitUnreadNotificationCount = (recipientId: string, unreadCount: number) => {
+  try {
+    if (!io || !recipientId) return;
+    io.to(`user:${recipientId}`).emit('notification:unread_count', { unreadCount });
+  } catch (err: any) {
+    console.warn('Socket error on emitUnreadNotificationCount:', err?.message);
+  }
+};
+
+/**
+ * Emit message sent/received to both participants
+ */
+export const emitMessageToUsers = (message: any) => {
+  try {
+    if (!io || !message) return;
+    const { receiverId, senderId, conversationId, text, createdAt } = message;
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit('message:received', message);
+      io.to(`user:${receiverId}`).emit('conversation:updated', {
+        conversationId,
+        lastMessageText: text,
+        lastMessageAt: createdAt,
+        senderId,
+        unreadDelta: 1,
+      });
+    }
+    if (senderId) {
+      io.to(`user:${senderId}`).emit('message:sent', message);
+      io.to(`user:${senderId}`).emit('conversation:updated', {
+        conversationId,
+        lastMessageText: text,
+        lastMessageAt: createdAt,
+        senderId,
+        unreadDelta: 0,
+      });
+    }
+  } catch (err: any) {
+    console.warn('Socket error on emitMessageToUsers:', err?.message);
+  }
+};
+
+/**
+ * Emit message seen status to the other user
+ */
+export const emitMessageSeen = (conversationId: string, seenBy: string, receiverId: string) => {
+  try {
+    if (!io || !receiverId) return;
+    io.to(`user:${receiverId}`).emit('message:seen', {
+      conversationId,
+      seenBy,
+      seenAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.warn('Socket error on emitMessageSeen:', err?.message);
+  }
+};
+
+/**
+ * Emit message update (edit) to both participants
+ */
+export const emitMessageUpdated = (updated: any) => {
+  try {
+    if (!io || !updated) return;
+    const { receiverId, senderId, conversationId, text, updatedAt } = updated;
+    const convUpdate = {
+      conversationId,
+      lastMessageText: text,
+      lastMessageAt: updatedAt,
+      senderId,
+    };
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit('message:updated', updated);
+      io.to(`user:${receiverId}`).emit('conversation:updated', convUpdate);
+    }
+    if (senderId) {
+      io.to(`user:${senderId}`).emit('message:updated', updated);
+      io.to(`user:${senderId}`).emit('conversation:updated', convUpdate);
+    }
+  } catch (err: any) {
+    console.warn('Socket error on emitMessageUpdated:', err?.message);
+  }
+};
+
+/**
+ * Emit message deletion to both participants
+ */
+export const emitMessageDeleted = (deleted: any) => {
+  try {
+    if (!io || !deleted) return;
+    const { receiverId, senderId, conversationId, text, updatedAt } = deleted;
+    const convUpdate = {
+      conversationId,
+      lastMessageText: text,
+      lastMessageAt: updatedAt,
+      senderId,
+    };
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit('message:deleted', deleted);
+      io.to(`user:${receiverId}`).emit('conversation:updated', convUpdate);
+    }
+    if (senderId) {
+      io.to(`user:${senderId}`).emit('message:deleted', deleted);
+      io.to(`user:${senderId}`).emit('conversation:updated', convUpdate);
+    }
+  } catch (err: any) {
+    console.warn('Socket error on emitMessageDeleted:', err?.message);
+  }
+};

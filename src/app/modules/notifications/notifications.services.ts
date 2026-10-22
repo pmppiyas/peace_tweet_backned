@@ -2,6 +2,7 @@ import { NotificationType } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
 import { ICreateNotificationInput, INotificationQuery } from './notifications.interface';
+import { emitNotificationToUser, emitUnreadNotificationCount } from '../../../socket';
 
 const invalidateNotificationCache = async (userId: string) => {
   try {
@@ -41,6 +42,14 @@ const createNotification = async (payload: ICreateNotificationInput) => {
     });
 
     await invalidateNotificationCache(payload.recipientId);
+
+    // Emit real-time notification & updated count via Socket.io
+    emitNotificationToUser(payload.recipientId, created);
+    prisma.notification
+      .count({ where: { recipientId: payload.recipientId, isRead: false } })
+      .then((unreadCount) => emitUnreadNotificationCount(payload.recipientId, unreadCount))
+      .catch(() => {});
+
     return created;
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -124,6 +133,11 @@ const markAsRead = async (id: string, userId: string) => {
   });
 
   await invalidateNotificationCache(userId);
+  prisma.notification
+    .count({ where: { recipientId: userId, isRead: false } })
+    .then((unreadCount) => emitUnreadNotificationCount(userId, unreadCount))
+    .catch(() => {});
+
   return { success: true, data: updated };
 };
 
@@ -136,6 +150,7 @@ const markAllAsRead = async (userId: string) => {
   });
 
   await invalidateNotificationCache(userId);
+  emitUnreadNotificationCount(userId, 0);
   return { success: true, message: 'All notifications marked as read' };
 };
 

@@ -15,6 +15,7 @@ import {
 } from '../../common/interfaces/friend.interface';
 import { PrismaService } from '../../database/prisma.service';
 import { FriendQueryDto, FriendRequestQueryDto } from './dto/friend-query.dto';
+import { emitNotificationToUser, emitUnreadNotificationCount } from '../../socket';
 
 @Injectable()
 export class FriendsService {
@@ -82,16 +83,37 @@ export class FriendsService {
       });
 
       if (receiverId !== senderId) {
-        await this.prisma.notification.create({
-          data: {
-            recipientId: receiverId,
-            actorId: senderId,
-            type: 'FRIEND_REQUEST' as any,
-            message: 'sent you a friend request.',
-            entityId: updated.id,
-            entityType: 'FRIEND_REQUEST',
-          },
-        }).catch((e: any) => console.error('Notification error on friend request:', e));
+        this.prisma.notification
+          .create({
+            data: {
+              recipientId: receiverId,
+              actorId: senderId,
+              type: 'FRIEND_REQUEST' as any,
+              message: 'sent you a friend request.',
+              entityId: updated.id,
+              entityType: 'FRIEND_REQUEST',
+            },
+            include: {
+              actor: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          })
+          .then(async (notif: any) => {
+            if (notif) {
+              emitNotificationToUser(receiverId, notif);
+              const unread = await this.prisma.notification.count({
+                where: { recipientId: receiverId, isRead: false },
+              });
+              emitUnreadNotificationCount(receiverId, unread);
+            }
+          })
+          .catch((e: any) => console.error('Notification error on friend request:', e));
       }
 
       return {
@@ -233,16 +255,37 @@ export class FriendsService {
     });
 
     if (request.senderId !== receiverId) {
-      await this.prisma.notification.create({
-        data: {
-          recipientId: request.senderId,
-          actorId: receiverId,
-          type: 'FRIEND_ACCEPT' as any,
-          message: 'accepted your friend request.',
-          entityId: request.id,
-          entityType: 'FRIEND_REQUEST',
-        },
-      }).catch((e: any) => console.error('Notification error on friend accept:', e));
+      this.prisma.notification
+        .create({
+          data: {
+            recipientId: request.senderId,
+            actorId: receiverId,
+            type: 'FRIEND_ACCEPT' as any,
+            message: 'accepted your friend request.',
+            entityId: request.id,
+            entityType: 'FRIEND_REQUEST',
+          },
+          include: {
+            actor: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        })
+        .then(async (notif: any) => {
+          if (notif) {
+            emitNotificationToUser(request.senderId, notif);
+            const unread = await this.prisma.notification.count({
+              where: { recipientId: request.senderId, isRead: false },
+            });
+            emitUnreadNotificationCount(request.senderId, unread);
+          }
+        })
+        .catch((e: any) => console.error('Notification error on friend accept:', e));
     }
 
     return {

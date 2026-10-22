@@ -4,6 +4,11 @@ import { catchAsync } from '../../utils/catchAsync';
 import { queryPick } from '../../utils/queryPick';
 import { sendResponse } from '../../utils/sendResponse';
 import { chatServices } from './chat.services';
+import {
+  emitMessageToUsers,
+  emitMessageUpdated,
+  emitMessageDeleted,
+} from '../../../socket';
 
 const getConversations = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await chatServices.getConversations(req.user.id);
@@ -39,6 +44,7 @@ const getMessages = catchAsync(async (req: Request & { user?: any }, res: Respon
 
 const sendMessage = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await chatServices.saveMessage(req.user.id, req.body);
+  emitMessageToUsers(result);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -49,6 +55,7 @@ const sendMessage = catchAsync(async (req: Request & { user?: any }, res: Respon
 
 const editMessage = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await chatServices.editMessage(req.user.id, req.params.messageId, req.body.text);
+  emitMessageUpdated(result);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -59,6 +66,7 @@ const editMessage = catchAsync(async (req: Request & { user?: any }, res: Respon
 
 const deleteMessage = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await chatServices.deleteMessage(req.user.id, req.params.messageId);
+  emitMessageDeleted(result);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

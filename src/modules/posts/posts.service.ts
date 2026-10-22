@@ -16,6 +16,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { QueryFeedDto } from './dto/query-feed.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { emitNotificationToUser, emitUnreadNotificationCount } from '../../socket';
 
 @Injectable()
 export class PostsService {
@@ -900,16 +901,37 @@ export class PostsService {
     });
 
     if (post.authorId && post.authorId !== userId) {
-      await this.db.notification.create({
-        data: {
-          recipientId: post.authorId,
-          actorId: userId,
-          type: 'POST_LIKE' as any,
-          message: 'liked your post.',
-          entityId: postId,
-          entityType: 'POST',
-        },
-      }).catch((e: any) => console.error('Notification error on like:', e));
+      this.db.notification
+        .create({
+          data: {
+            recipientId: post.authorId,
+            actorId: userId,
+            type: 'POST_LIKE' as any,
+            message: 'liked your post.',
+            entityId: postId,
+            entityType: 'POST',
+          },
+          include: {
+            actor: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        })
+        .then(async (notif: any) => {
+          if (notif) {
+            emitNotificationToUser(post.authorId, notif);
+            const unread = await this.db.notification.count({
+              where: { recipientId: post.authorId, isRead: false },
+            });
+            emitUnreadNotificationCount(post.authorId, unread);
+          }
+        })
+        .catch((e: any) => console.error('Notification error on like:', e));
     }
 
     const count = await this.db.reaction.count({
@@ -1016,16 +1038,37 @@ export class PostsService {
     });
 
     if (post.authorId && post.authorId !== userId) {
-      await this.db.notification.create({
-        data: {
-          recipientId: post.authorId,
-          actorId: userId,
-          type: 'POST_COMMENT' as any,
-          message: `commented: "${dto.content.trim().slice(0, 50)}${dto.content.trim().length > 50 ? '...' : ''}"`,
-          entityId: postId,
-          entityType: 'POST',
-        },
-      }).catch((e: any) => console.error('Notification error on comment:', e));
+      this.db.notification
+        .create({
+          data: {
+            recipientId: post.authorId,
+            actorId: userId,
+            type: 'POST_COMMENT' as any,
+            message: `commented: "${dto.content.trim().slice(0, 50)}${dto.content.trim().length > 50 ? '...' : ''}"`,
+            entityId: postId,
+            entityType: 'POST',
+          },
+          include: {
+            actor: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        })
+        .then(async (notif: any) => {
+          if (notif) {
+            emitNotificationToUser(post.authorId, notif);
+            const unread = await this.db.notification.count({
+              where: { recipientId: post.authorId, isRead: false },
+            });
+            emitUnreadNotificationCount(post.authorId, unread);
+          }
+        })
+        .catch((e: any) => console.error('Notification error on comment:', e));
     }
 
     const commentCount = await this.db.comment.count({
