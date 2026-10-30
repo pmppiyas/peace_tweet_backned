@@ -5,6 +5,7 @@ export interface SearchQueryParams {
   type?: SearchScope;
   limit?: number;
   page?: number;
+  userId?: string;
 }
 
 export interface AddSearchHistoryInput {

@@ -9,11 +9,13 @@ const searchGlobal = catchAsync(async (req: Request, res: Response) => {
   const q = typeof req.query.q === 'string' ? req.query.q : '';
   const type = (req.query.type as SearchScope) || 'ALL';
   const limit = req.query.limit ? Number(req.query.limit) : 8;
+  const userId = (req as any).user?.id;
 
   const result = await searchServices.searchGlobal({
     q,
     type,
     limit,
+    userId,
   });
 
   sendResponse(res, {
