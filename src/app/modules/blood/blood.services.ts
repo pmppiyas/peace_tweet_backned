@@ -48,7 +48,6 @@ const createBloodRequest = async (
       bloodGroup: payload.bloodGroup,
       units: payload.units || 1,
       hospitalName: payload.hospitalName.trim(),
-      hospitalAddress: payload.hospitalAddress?.trim() || null,
       country: payload.country?.trim() || 'Bangladesh',
       countryCode: payload.countryCode?.trim() || 'BD',
       state: payload.state?.trim() || null,
@@ -57,9 +56,7 @@ const createBloodRequest = async (
       contactNumber: payload.contactNumber.trim(),
       alternateContact: payload.alternateContact?.trim() || null,
       neededDate: new Date(payload.neededDate),
-      urgency: payload.urgency || 'REGULAR',
       status: 'PENDING',
-      note: payload.note?.trim() || null,
     },
     include: {
       requester: {
@@ -94,9 +91,6 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
     }
     if (query.status) {
       conditions.push({ status: query.status });
-    }
-    if (query.urgency) {
-      conditions.push({ urgency: query.urgency });
     }
     if (query.requesterId) {
       conditions.push({ requesterId: query.requesterId });
@@ -163,7 +157,6 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
         skip,
         take: limit,
         orderBy: [
-          { urgency: 'desc' },
           { neededDate: 'asc' },
           { createdAt: 'desc' },
         ],
@@ -351,7 +344,7 @@ const acceptBloodRequest = async (
     });
 
     return { donation, request: updatedRequest };
-  });
+  }, { maxWait: 15000, timeout: 20000 });
 
   await invalidateBloodCache(requestId);
 
@@ -417,7 +410,7 @@ const completeDonation = async (
     });
 
     return { donation: updatedDonation, request: updatedRequest };
-  });
+  }, { maxWait: 15000, timeout: 20000 });
 
   await invalidateBloodCache(requestId);
 
@@ -467,11 +460,36 @@ const cancelDonation = async (requestId: string, donorUserId: string) => {
     });
 
     return { message: 'Donation acceptance cancelled successfully', request: updatedRequest };
-  });
+  }, { maxWait: 15000, timeout: 20000 });
 
   await invalidateBloodCache(requestId);
 
   return result;
+};
+
+const deleteBloodRequest = async (requestId: string, userId: string) => {
+  const request = await prisma.bloodRequest.findUnique({
+    where: { id: requestId },
+  });
+
+  if (!request) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Blood request not found');
+  }
+
+  if (request.requesterId !== userId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only the requester can delete this blood request',
+    );
+  }
+
+  await prisma.bloodRequest.delete({
+    where: { id: requestId },
+  });
+
+  await invalidateBloodCache(requestId);
+
+  return { message: 'Blood request deleted successfully' };
 };
 
 const updateBloodRequestStatus = async (
@@ -662,6 +680,7 @@ export const bloodServices = {
   createBloodRequest,
   getAllBloodRequests,
   getBloodRequestById,
+  deleteBloodRequest,
   acceptBloodRequest,
   completeDonation,
   cancelDonation,

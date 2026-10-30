@@ -98,13 +98,10 @@ export class CreatePostDto {
     bloodGroup: any;
     units?: number;
     hospitalName: string;
-    hospitalAddress?: string;
     location: string;
     contactNumber: string;
     alternateContact?: string;
     neededDate: string | Date;
-    urgency?: any;
-    note?: string;
     forMyself?: boolean;
   };
 

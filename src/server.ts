@@ -8,7 +8,18 @@ let server: Server;
 
 async function bootstrap() {
   try {
-    await prisma.$connect();
+    let retries = 5;
+    while (retries > 0) {
+      try {
+        await prisma.$connect();
+        break;
+      } catch (err) {
+        retries -= 1;
+        if (retries === 0) throw err;
+        console.log(`⚠️ Database connection attempt failed, retrying in 3s... (${retries} retries left)`);
+        await new Promise((res) => setTimeout(res, 3000));
+      }
+    }
     console.log('✅ PostgreSQL Database connected via Prisma');
 
     const httpServer = createServer(app);

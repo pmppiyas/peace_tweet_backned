@@ -78,13 +78,10 @@ export class PostsService {
             bloodGroup: bData.bloodGroup,
             units: bData.units ? Number(bData.units) : 1,
             hospitalName: bData.hospitalName.trim(),
-            hospitalAddress: bData.hospitalAddress?.trim() || null,
             location: bData.location.trim(),
             contactNumber: bData.contactNumber.trim(),
             alternateContact: bData.alternateContact?.trim() || null,
             neededDate: new Date(bData.neededDate),
-            urgency: bData.urgency || 'REGULAR',
-            note: bData.note?.trim() || null,
             forMyself: Boolean(bData.forMyself),
           },
         });
@@ -1165,14 +1162,11 @@ export class PostsService {
             units: post.bloodRequest.units,
             unitsFulfilled: post.bloodRequest.unitsFulfilled,
             hospitalName: post.bloodRequest.hospitalName,
-            hospitalAddress: post.bloodRequest.hospitalAddress,
             location: post.bloodRequest.location,
             contactNumber: post.bloodRequest.contactNumber,
             alternateContact: post.bloodRequest.alternateContact,
             neededDate: post.bloodRequest.neededDate,
-            urgency: post.bloodRequest.urgency,
             status: post.bloodRequest.status,
-            note: post.bloodRequest.note,
             createdAt: post.bloodRequest.createdAt,
             requester: post.bloodRequest.requester
               ? {

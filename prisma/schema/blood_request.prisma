@@ -11,7 +11,6 @@ model BloodRequest {
   units            Int                  @default(1)
   unitsFulfilled   Int                  @default(0)
   hospitalName     String
-  hospitalAddress  String?
   country          String?              @default("Bangladesh")
   countryCode      String?              @default("BD")
   state            String?
@@ -20,9 +19,7 @@ model BloodRequest {
   contactNumber    String
   alternateContact String?
   neededDate       DateTime
-  urgency          BloodRequestUrgency  @default(REGULAR)
   status           BloodRequestStatus   @default(PENDING)
-  note             String?              @db.Text
 
   donations        BloodDonation[]      @relation("BloodRequestDonations")
   posts            Post[]               @relation("BloodRequestPosts")

@@ -1,4 +1,4 @@
-import { BloodGroup, BloodRequestStatus, BloodRequestUrgency } from '@prisma/client';
+import { BloodGroup, BloodRequestStatus } from '@prisma/client';
 
 export interface ICreateBloodRequestInput {
   forMyself?: boolean;
@@ -8,7 +8,6 @@ export interface ICreateBloodRequestInput {
   bloodGroup: BloodGroup;
   units?: number;
   hospitalName: string;
-  hospitalAddress?: string;
   country?: string;
   countryCode?: string;
   state?: string;
@@ -17,8 +16,6 @@ export interface ICreateBloodRequestInput {
   contactNumber: string;
   alternateContact?: string;
   neededDate: string | Date;
-  urgency?: BloodRequestUrgency;
-  note?: string;
 }
 
 export interface IUpdateBloodRequestStatusInput {
@@ -28,7 +25,6 @@ export interface IUpdateBloodRequestStatusInput {
 export interface IBloodRequestQuery {
   bloodGroup?: BloodGroup;
   status?: BloodRequestStatus;
-  urgency?: BloodRequestUrgency;
   countryCode?: string;
   state?: string;
   city?: string;

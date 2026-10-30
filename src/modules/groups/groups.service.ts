@@ -1255,14 +1255,11 @@ export class GroupsService {
             units: post.bloodRequest.units,
             unitsFulfilled: post.bloodRequest.unitsFulfilled,
             hospitalName: post.bloodRequest.hospitalName,
-            hospitalAddress: post.bloodRequest.hospitalAddress,
             location: post.bloodRequest.location,
             contactNumber: post.bloodRequest.contactNumber,
             alternateContact: post.bloodRequest.alternateContact,
             neededDate: post.bloodRequest.neededDate,
-            urgency: post.bloodRequest.urgency,
             status: post.bloodRequest.status,
-            note: post.bloodRequest.note,
             createdAt: post.bloodRequest.createdAt,
             requester: post.bloodRequest.requester
               ? {

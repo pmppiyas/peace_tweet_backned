@@ -20,6 +20,7 @@ router.post(
 
 router.get('/requests', optionalAuth(), bloodController.getAllRequests);
 router.get('/requests/:id', optionalAuth(), bloodController.getRequestById);
+router.delete('/requests/:id', checkAuth(), bloodController.deleteRequest);
 
 // Donor acceptance & completion workflow
 router.post(

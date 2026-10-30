@@ -29,13 +29,10 @@ export const createPostZodSchema = z.object({
       bloodGroup: z.string(),
       units: z.number().int().min(1).optional().default(1),
       hospitalName: z.string().min(1, 'Hospital name is required'),
-      hospitalAddress: z.string().optional(),
       location: z.string().min(1, 'Location is required'),
       contactNumber: z.string().min(1, 'Contact number is required'),
       alternateContact: z.string().optional(),
       neededDate: z.string(),
-      urgency: z.string().optional().default('REGULAR'),
-      note: z.string().optional(),
       forMyself: z.boolean().optional(),
     })
     .optional(),

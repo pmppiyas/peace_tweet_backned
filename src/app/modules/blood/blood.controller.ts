@@ -34,6 +34,16 @@ const getRequestById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteRequest = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const result = await bloodServices.deleteBloodRequest(req.params.id, req.user.id);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Blood request deleted successfully',
+    data: result,
+  });
+});
+
 const acceptRequest = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await bloodServices.acceptBloodRequest(
     req.params.id,
@@ -122,6 +132,7 @@ export const bloodController = {
   createRequest,
   getAllRequests,
   getRequestById,
+  deleteRequest,
   acceptRequest,
   completeDonation,
   cancelDonation,

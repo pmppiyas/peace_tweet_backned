@@ -1,4 +1,4 @@
-import { BloodGroup, BloodRequestStatus, BloodRequestUrgency } from '@prisma/client';
+import { BloodGroup, BloodRequestStatus } from '@prisma/client';
 import { z } from 'zod';
 
 export const createBloodRequestZodSchema = z.object({
@@ -15,7 +15,6 @@ export const createBloodRequestZodSchema = z.object({
   hospitalName: z.string({
     required_error: 'Hospital name is required',
   }).min(1, 'Hospital name cannot be empty').trim(),
-  hospitalAddress: z.string().optional().nullable(),
   country: z.string().max(100).optional(),
   countryCode: z.string().max(10).optional(),
   state: z.string().max(100).optional(),
@@ -30,8 +29,6 @@ export const createBloodRequestZodSchema = z.object({
   neededDate: z.string({
     required_error: 'Needed date is required',
   }).or(z.date()),
-  urgency: z.nativeEnum(BloodRequestUrgency).optional(),
-  note: z.string().optional().nullable(),
 });
 
 export const updateBloodRequestStatusZodSchema = z.object({
