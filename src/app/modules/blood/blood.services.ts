@@ -2,12 +2,10 @@ import httpStatus from 'http-status-codes';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
 import AppError from '../../utils/appError';
-import {
-  ICreateBloodRequestInput,
-  IBloodRequestQuery,
-  IDonorQuery,
-} from './blood.interface';
+import { ICreateBloodRequestInput, IBloodRequestQuery, IDonorQuery } from './blood.interface';
 import { BloodRequestStatus } from '@prisma/client';
+import { notificationsServices } from '../notifications/notifications.services';
+import { getSafeIO } from '../../../socket';
 
 const invalidateBloodCache = async (requestId?: string) => {
   try {
@@ -21,10 +19,7 @@ const invalidateBloodCache = async (requestId?: string) => {
   }
 };
 
-const createBloodRequest = async (
-  userId: string,
-  payload: ICreateBloodRequestInput,
-) => {
+const createBloodRequest = async (userId: string, payload: ICreateBloodRequestInput) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, name: true },
@@ -34,9 +29,7 @@ const createBloodRequest = async (
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const patientName = payload.forMyself
-    ? payload.patientName || user.name
-    : payload.patientName;
+  const patientName = payload.forMyself ? payload.patientName || user.name : payload.patientName;
 
   const result = await prisma.bloodRequest.create({
     data: {
@@ -151,15 +144,17 @@ const getAllBloodRequests = async (query: IBloodRequestQuery) => {
 
     const where = conditions.length > 0 ? { AND: conditions } : {};
 
+    const orderBy: any =
+      query.requesterId || query.donorId
+        ? [{ createdAt: 'desc' }]
+        : [{ neededDate: 'asc' }, { createdAt: 'desc' }];
+
     const [items, total] = await Promise.all([
       prisma.bloodRequest.findMany({
         where,
         skip,
         take: limit,
-        orderBy: [
-          { neededDate: 'asc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy,
         include: {
           requester: {
             select: {
@@ -245,10 +240,7 @@ const getBloodRequestById = async (requestId: string) => {
   });
 };
 
-const acceptBloodRequest = async (
-  requestId: string,
-  donorUserId: string,
-) => {
+const acceptBloodRequest = async (requestId: string, donorUserId: string) => {
   const request = await prisma.bloodRequest.findUnique({
     where: { id: requestId },
     include: {
@@ -261,10 +253,7 @@ const acceptBloodRequest = async (
   }
 
   if (request.requesterId === donorUserId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You cannot donate blood to your own request',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'You cannot donate blood to your own request');
   }
 
   if (request.status === 'COMPLETED' || request.status === 'CANCELLED') {
@@ -298,64 +287,119 @@ const acceptBloodRequest = async (
     );
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const donation = await tx.bloodDonation.create({
-      data: {
-        bloodRequestId: requestId,
-        donorId: donorUserId,
-        status: 'ACCEPTED',
-      },
-      include: {
-        donor: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            avatarUrl: true,
-            bloodGroup: true,
-            donationCount: true,
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const donation = await tx.bloodDonation.upsert({
+        where: {
+          bloodRequestId_donorId: {
+            bloodRequestId: requestId,
+            donorId: donorUserId,
           },
         },
-      },
-    });
+        create: {
+          bloodRequestId: requestId,
+          donorId: donorUserId,
+          status: 'ACCEPTED',
+        },
+        update: {
+          status: 'ACCEPTED',
+          donatedAt: null,
+        },
+        include: {
+          donor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              avatarUrl: true,
+              bloodGroup: true,
+              donationCount: true,
+            },
+          },
+        },
+      });
 
-    const newTotalPledged = activePledgedUnits + 1;
-    const newStatus =
-      newTotalPledged >= request.units ? 'FULLY_ACCEPTED' : 'PARTIALLY_ACCEPTED';
+      const newTotalPledged = activePledgedUnits + 1;
+      const newStatus = newTotalPledged >= request.units ? 'FULLY_ACCEPTED' : 'PARTIALLY_ACCEPTED';
 
-    const updatedRequest = await tx.bloodRequest.update({
-      where: { id: requestId },
-      data: { status: newStatus },
-      include: {
-        donations: {
-          include: {
-            donor: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-                avatarUrl: true,
-                bloodGroup: true,
+      const updatedRequest = await tx.bloodRequest.update({
+        where: { id: requestId },
+        data: { status: newStatus },
+        include: {
+          donations: {
+            include: {
+              donor: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  avatarUrl: true,
+                  bloodGroup: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    return { donation, request: updatedRequest };
-  }, { maxWait: 15000, timeout: 20000 });
+      return { donation, request: updatedRequest };
+    },
+    { maxWait: 15000, timeout: 20000 },
+  );
 
   await invalidateBloodCache(requestId);
+
+  // Send real-time notification to the blood requester
+  try {
+    const donorUser = result.donation.donor;
+    const donorName = donorUser?.name || 'A blood donor';
+    const patientName = request.patientName;
+    const groupBadge = request.bloodGroup.replace('_POSITIVE', '+').replace('_NEGATIVE', '-');
+
+    // 1. Send real-time notification to the blood requester
+    await notificationsServices.createNotification({
+      recipientId: request.requesterId,
+      actorId: donorUserId,
+      type: 'BLOOD_REQUEST',
+      title: 'Donor Pledged! 🩸',
+      message: `${donorName} pledged to donate blood for your request (${patientName} - ${groupBadge}).`,
+      entityId: requestId,
+      entityType: 'BLOOD_REQUEST',
+    });
+
+    // 2. Send real-time notification to the donor
+    await notificationsServices.createNotification({
+      recipientId: donorUserId,
+      actorId: request.requesterId,
+      type: 'BLOOD_REQUEST',
+      title: 'Donation Pledge Confirmed! ❤️',
+      message: `Thank you! You have pledged to donate blood for ${patientName} (${groupBadge}). View your Activity tab to connect with the patient or family.`,
+      entityId: requestId,
+      entityType: 'BLOOD_REQUEST',
+    });
+
+    const io = getSafeIO();
+    if (io) {
+      io.emit('blood:updated', { requestId, action: 'pledged', donation: result.donation });
+      io.to(`user:${request.requesterId}`).emit('blood:request_pledged', {
+        requestId,
+        donation: result.donation,
+        request: result.request,
+      });
+      io.to(`user:${donorUserId}`).emit('blood:pledge_confirmed', {
+        requestId,
+        donation: result.donation,
+        request: result.request,
+      });
+    }
+  } catch (notifErr: any) {
+    console.warn('Failed to send blood donation notification:', notifErr?.message);
+  }
 
   return result;
 };
 
-const completeDonation = async (
-  requestId: string,
-  donationId: string,
-  currentUserId: string,
-) => {
+const completeDonation = async (requestId: string, donationId: string, currentUserId: string) => {
   const donation = await prisma.bloodDonation.findUnique({
     where: { id: donationId },
     include: { bloodRequest: true },
@@ -379,40 +423,88 @@ const completeDonation = async (
     );
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    // 1. Mark donation as completed
-    const updatedDonation = await tx.bloodDonation.update({
-      where: { id: donationId },
-      data: {
-        status: 'COMPLETED',
-        donatedAt: new Date(),
-      },
-    });
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // 1. Mark donation as completed
+      const updatedDonation = await tx.bloodDonation.update({
+        where: { id: donationId },
+        data: {
+          status: 'COMPLETED',
+          donatedAt: new Date(),
+        },
+      });
 
-    // 2. Increment donor's donationCount
-    await tx.user.update({
-      where: { id: donation.donorId },
-      data: {
-        donationCount: { increment: 1 },
-      },
-    });
+      // 2. Increment donor's donationCount
+      await tx.user.update({
+        where: { id: donation.donorId },
+        data: {
+          donationCount: { increment: 1 },
+        },
+      });
 
-    // 3. Update blood request fulfilled count (1 donation = 1 unit)
-    const newFulfilled = donation.bloodRequest.unitsFulfilled + 1;
-    const isAllFulfilled = newFulfilled >= donation.bloodRequest.units;
+      // 3. Update blood request fulfilled count (1 donation = 1 unit)
+      const newFulfilled = donation.bloodRequest.unitsFulfilled + 1;
+      const isAllFulfilled = newFulfilled >= donation.bloodRequest.units;
 
-    const updatedRequest = await tx.bloodRequest.update({
-      where: { id: requestId },
-      data: {
-        unitsFulfilled: newFulfilled,
-        status: isAllFulfilled ? 'COMPLETED' : donation.bloodRequest.status,
-      },
-    });
+      const updatedRequest = await tx.bloodRequest.update({
+        where: { id: requestId },
+        data: {
+          unitsFulfilled: newFulfilled,
+          status: isAllFulfilled ? 'COMPLETED' : donation.bloodRequest.status,
+        },
+      });
 
-    return { donation: updatedDonation, request: updatedRequest };
-  }, { maxWait: 15000, timeout: 20000 });
+      return { donation: updatedDonation, request: updatedRequest };
+    },
+    { maxWait: 15000, timeout: 20000 },
+  );
 
   await invalidateBloodCache(requestId);
+
+  // Send real-time completion notification to the blood donor
+  try {
+    const requester = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { name: true },
+    });
+    const requesterName = requester?.name || 'The requester';
+
+    // 1. Send real-time notification to the donor
+    await notificationsServices.createNotification({
+      recipientId: donation.donorId,
+      actorId: currentUserId,
+      type: 'BLOOD_REQUEST',
+      title: 'Blood Donation Completed! ❤️',
+      message: `${requesterName} marked your blood donation as completed for ${donation.bloodRequest.patientName}. Thank you for saving a life!`,
+      entityId: requestId,
+      entityType: 'BLOOD_REQUEST',
+    });
+
+    // 2. Send real-time notification to the requester
+    await notificationsServices.createNotification({
+      recipientId: currentUserId,
+      actorId: donation.donorId,
+      type: 'BLOOD_REQUEST',
+      title: 'Blood Request Completed! 🎉',
+      message: `Your blood request for ${donation.bloodRequest.patientName} has been marked as completed. Thank you for connecting with donors.`,
+      entityId: requestId,
+      entityType: 'BLOOD_REQUEST',
+    });
+
+    const io = getSafeIO();
+    if (io) {
+      io.emit('blood:updated', { requestId, action: 'completed' });
+      io.to(`user:${donation.donorId}`).emit('blood:donation_completed', {
+        requestId,
+        donationId,
+      });
+      io.to(`user:${currentUserId}`).emit('blood:request_completed', {
+        requestId,
+      });
+    }
+  } catch (notifErr: any) {
+    console.warn('Failed to send blood completion notification:', notifErr?.message);
+  }
 
   return result;
 };
@@ -428,41 +520,85 @@ const cancelDonation = async (requestId: string, donorUserId: string) => {
   });
 
   if (!donation) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Active accepted donation record not found',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'Active accepted donation record not found');
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    await tx.bloodDonation.update({
-      where: { id: donation.id },
-      data: { status: 'CANCELLED' },
-    });
+  const result = await prisma.$transaction(
+    async (tx) => {
+      await tx.bloodDonation.update({
+        where: { id: donation.id },
+        data: { status: 'CANCELLED' },
+      });
 
-    // Recalculate remaining active pledges (1 donation = 1 unit)
-    const remainingActive = await tx.bloodDonation.findMany({
-      where: {
-        bloodRequestId: requestId,
-        status: { in: ['ACCEPTED', 'COMPLETED'] },
-        id: { not: donation.id },
-      },
-    });
+      // Recalculate remaining active pledges (1 donation = 1 unit)
+      const remainingActive = await tx.bloodDonation.findMany({
+        where: {
+          bloodRequestId: requestId,
+          status: { in: ['ACCEPTED', 'COMPLETED'] },
+          id: { not: donation.id },
+        },
+      });
 
-    const activePledges = remainingActive.length;
+      const activePledges = remainingActive.length;
 
-    const newStatus =
-      activePledges > 0 ? 'PARTIALLY_ACCEPTED' : 'PENDING';
+      const newStatus = activePledges > 0 ? 'PARTIALLY_ACCEPTED' : 'PENDING';
 
-    const updatedRequest = await tx.bloodRequest.update({
-      where: { id: requestId },
-      data: { status: newStatus },
-    });
+      const updatedRequest = await tx.bloodRequest.update({
+        where: { id: requestId },
+        data: { status: newStatus },
+      });
 
-    return { message: 'Donation acceptance cancelled successfully', request: updatedRequest };
-  }, { maxWait: 15000, timeout: 20000 });
+      return { message: 'Donation acceptance cancelled successfully', request: updatedRequest };
+    },
+    { maxWait: 15000, timeout: 20000 },
+  );
 
   await invalidateBloodCache(requestId);
+
+  // Send real-time cancellation notification to the blood requester
+  try {
+    const donor = await prisma.user.findUnique({
+      where: { id: donorUserId },
+      select: { name: true },
+    });
+    const donorName = donor?.name || 'A donor';
+
+    // 1. Notify requester that donor cancelled pledge
+    await notificationsServices.createNotification({
+      recipientId: donation.bloodRequest.requesterId,
+      actorId: donorUserId,
+      type: 'BLOOD_REQUEST',
+      title: 'Donation Pledge Cancelled',
+      message: `${donorName} withdrew their pledge to donate blood for ${donation.bloodRequest.patientName}.`,
+      entityId: requestId,
+      entityType: 'BLOOD_REQUEST',
+    });
+
+    // 2. Notify donor confirming their cancellation
+    await notificationsServices.createNotification({
+      recipientId: donorUserId,
+      actorId: donation.bloodRequest.requesterId,
+      type: 'BLOOD_REQUEST',
+      title: 'Pledge Withdrawal Confirmed',
+      message: `Your pledge to donate blood for ${donation.bloodRequest.patientName} has been cancelled.`,
+      entityId: requestId,
+      entityType: 'BLOOD_REQUEST',
+    });
+
+    const io = getSafeIO();
+    if (io) {
+      io.emit('blood:updated', { requestId, action: 'cancelled' });
+      io.to(`user:${donation.bloodRequest.requesterId}`).emit('blood:request_cancelled', {
+        requestId,
+        donorId: donorUserId,
+      });
+      io.to(`user:${donorUserId}`).emit('blood:pledge_cancelled_self', {
+        requestId,
+      });
+    }
+  } catch (notifErr: any) {
+    console.warn('Failed to send blood cancellation notification:', notifErr?.message);
+  }
 
   return result;
 };
@@ -477,10 +613,7 @@ const deleteBloodRequest = async (requestId: string, userId: string) => {
   }
 
   if (request.requesterId !== userId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only the requester can delete this blood request',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'Only the requester can delete this blood request');
   }
 
   await prisma.bloodRequest.delete({
@@ -552,8 +685,7 @@ const toggleDonorMode = async (userId: string, isDonor?: boolean) => {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const nextStatus =
-    typeof isDonor === 'boolean' ? isDonor : !currentUser.isDonor;
+  const nextStatus = typeof isDonor === 'boolean' ? isDonor : !currentUser.isDonor;
 
   const user = await prisma.user.update({
     where: { id: userId },
@@ -639,10 +771,7 @@ const getAvailableDonors = async (query: IDonorQuery) => {
         where,
         skip,
         take: limit,
-        orderBy: [
-          { donationCount: 'desc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ donationCount: 'desc' }, { createdAt: 'desc' }],
         select: {
           id: true,
           name: true,
