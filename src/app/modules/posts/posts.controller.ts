@@ -121,11 +121,15 @@ const getComments = catchAsync(async (req: Request, res: Response) => {
 });
 
 const createComment = catchAsync(async (req: Request & { user?: any }, res: Response) => {
-  const result = await postsServices.createComment(req.params.postId, req.user.id, req.body);
+  const payload = {
+    ...req.body,
+    parentId: req.params.commentId || req.body?.parentId || null,
+  };
+  const result = await postsServices.createComment(req.params.postId, req.user.id, payload);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Comment created successfully',
+    message: payload.parentId ? 'Reply created successfully' : 'Comment created successfully',
     data: result,
   });
 });

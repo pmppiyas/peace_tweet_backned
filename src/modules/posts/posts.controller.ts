@@ -105,7 +105,7 @@ export class PostsController {
 
   @ApiBearerAuth('JWT-auth')
   @Post(':postId/comments')
-  @ApiOperation({ summary: 'Add a comment to a Post' })
+  @ApiOperation({ summary: 'Add a comment or reply to a Post' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Comment created successfully' })
   async createComment(
     @Param('postId') postId: string,
@@ -113,5 +113,21 @@ export class PostsController {
     @CurrentUser() user: ActiveUserData,
   ) {
     return this.postsService.createComment(postId, user.id, dto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @Post(':postId/comments/:commentId/replies')
+  @ApiOperation({ summary: 'Reply to a specific Comment on a Post' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Reply created successfully' })
+  async replyToComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body() dto: CreateCommentDto,
+    @CurrentUser() user: ActiveUserData,
+  ) {
+    return this.postsService.createComment(postId, user.id, {
+      ...dto,
+      parentId: commentId,
+    });
   }
 }

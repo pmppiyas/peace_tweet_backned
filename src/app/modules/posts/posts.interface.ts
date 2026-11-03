@@ -47,6 +47,7 @@ export interface IUpdatePostInput {
 
 export interface ICreateCommentInput {
   content: string;
+  parentId?: string | null;
 }
 
 export interface IQueryFeed {

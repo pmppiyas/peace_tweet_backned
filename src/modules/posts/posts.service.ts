@@ -626,6 +626,30 @@ export class PostsService {
       throw new ForbiddenException('You are not authorized to delete this post.');
     }
 
+    // Always delete all comments (and nested replies) and reactions associated with this post
+    await this.db.comment.deleteMany({
+      where: { postId: id },
+    });
+
+    await this.db.reaction.deleteMany({
+      where: { postId: id },
+    });
+
+    await this.db.savedItem.deleteMany({
+      where: {
+        type: 'POST',
+        contentId: id,
+      },
+    });
+
+    try {
+      await this.db.notification.deleteMany({
+        where: {
+          entityId: id,
+        },
+      });
+    } catch {}
+
     // If this post was created as a share, clean up the share entry
     await this.db.share.deleteMany({
       where: { sharedPostId: id },
@@ -664,21 +688,6 @@ export class PostsService {
         ],
       },
     });
-
-    await this.db.savedItem.deleteMany({
-      where: {
-        type: 'POST',
-        contentId: id,
-      },
-    });
-
-    try {
-      await this.db.notification.deleteMany({
-        where: {
-          entityId: id,
-        },
-      });
-    } catch {}
 
     await this.db.post.delete({
       where: { id },
@@ -975,7 +984,7 @@ export class PostsService {
 
     const comments = await this.db.comment.findMany({
       where: { postId },
-      take: limit,
+      take: Math.max(limit * 4, 200),
       orderBy: { createdAt: 'asc' },
       include: {
         author: {
@@ -989,19 +998,39 @@ export class PostsService {
       },
     });
 
-    return comments.map((c: any) => ({
-      id: c.id,
-      postId: c.postId,
-      content: c.content,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-      author: {
-        id: c.author.id,
-        name: c.author.name,
-        username: c.author.username,
-        avatar: c.author.avatarUrl || null,
-      },
-    }));
+    const nodeMap = new Map<string, any>();
+    const rootComments: any[] = [];
+
+    for (const c of comments as any[]) {
+      nodeMap.set(c.id, {
+        id: c.id,
+        postId: c.postId,
+        parentId: c.parentId || null,
+        content: c.content,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        author: {
+          id: c.author.id,
+          name: c.author.name,
+          username: c.author.username,
+          avatar: c.author.avatarUrl || null,
+        },
+        replyCount: 0,
+        replies: [],
+      });
+    }
+
+    for (const node of nodeMap.values()) {
+      if (node.parentId && nodeMap.has(node.parentId)) {
+        const parentNode = nodeMap.get(node.parentId);
+        parentNode.replies.push(node);
+        parentNode.replyCount = parentNode.replies.length;
+      } else {
+        rootComments.push(node);
+      }
+    }
+
+    return rootComments.slice(0, limit);
   }
 
   async createComment(postId: string, userId: string, dto: CreateCommentDto) {
@@ -1016,11 +1045,29 @@ export class PostsService {
       await this.verifyGroupPostAccess(post.groupId, { id: userId, email: '', role: Role.USER });
     }
 
+    let parentComment: any = null;
+    if (dto.parentId) {
+      parentComment = await this.db.comment.findFirst({
+        where: {
+          id: dto.parentId,
+          postId,
+        },
+      });
+      if (!parentComment) {
+        throw new NotFoundException(
+          `Parent comment with ID '${dto.parentId}' not found on this post.`,
+        );
+      }
+    }
+
+    const trimmedContent = dto.content.trim();
+
     const comment = await this.db.comment.create({
       data: {
         postId,
         authorId: userId,
-        content: dto.content.trim(),
+        parentId: dto.parentId || null,
+        content: trimmedContent,
       },
       include: {
         author: {
@@ -1034,14 +1081,56 @@ export class PostsService {
       },
     });
 
-    if (post.authorId && post.authorId !== userId) {
+    const previewText = `${trimmedContent.slice(0, 50)}${trimmedContent.length > 50 ? '...' : ''}`;
+
+    // Notify parent comment author when someone replies to their comment
+    if (parentComment && parentComment.authorId && parentComment.authorId !== userId) {
+      this.db.notification
+        .create({
+          data: {
+            recipientId: parentComment.authorId,
+            actorId: userId,
+            type: 'POST_COMMENT' as any,
+            message: `replied to your comment: "${previewText}"`,
+            entityId: postId,
+            entityType: 'POST',
+          },
+          include: {
+            actor: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        })
+        .then(async (notif: any) => {
+          if (notif) {
+            emitNotificationToUser(parentComment.authorId, notif);
+            const unread = await this.db.notification.count({
+              where: { recipientId: parentComment.authorId, isRead: false },
+            });
+            emitUnreadNotificationCount(parentComment.authorId, unread);
+          }
+        })
+        .catch((e: any) => console.error('Notification error on comment reply:', e));
+    }
+
+    // Notify post author if they are not the commenter and weren't already notified as parentComment author
+    if (
+      post.authorId &&
+      post.authorId !== userId &&
+      post.authorId !== parentComment?.authorId
+    ) {
       this.db.notification
         .create({
           data: {
             recipientId: post.authorId,
             actorId: userId,
             type: 'POST_COMMENT' as any,
-            message: `commented: "${dto.content.trim().slice(0, 50)}${dto.content.trim().length > 50 ? '...' : ''}"`,
+            message: `commented: "${previewText}"`,
             entityId: postId,
             entityType: 'POST',
           },
@@ -1076,14 +1165,18 @@ export class PostsService {
       comment: {
         id: comment.id,
         postId: comment.postId,
+        parentId: (comment as any).parentId || null,
         content: comment.content,
         createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
         author: {
           id: comment.author.id,
           name: comment.author.name,
           username: comment.author.username,
           avatar: comment.author.avatarUrl || null,
         },
+        replyCount: 0,
+        replies: [],
       },
       commentCount,
     };

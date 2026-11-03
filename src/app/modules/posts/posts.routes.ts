@@ -29,6 +29,12 @@ router.post(
   postsController.createComment,
 );
 router.post(
+  '/:postId/comments/:commentId/replies',
+  checkAuth(),
+  validateRequest(createCommentZodSchema),
+  postsController.createComment,
+);
+router.post(
   '/:postId/share',
   checkAuth(),
   (req, res, next) => {

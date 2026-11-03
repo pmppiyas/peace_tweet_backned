@@ -1,5 +1,7 @@
 import { v2 as cloudinary, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
 import httpStatus from 'http-status-codes';
+import * as fs from 'fs';
+import * as path from 'path';
 import { envVar } from '../../config/env';
 import AppError from '../../utils/appError';
 import { IUploadResult } from './uploads.interface';
@@ -19,26 +21,39 @@ if (isConfigured) {
 }
 
 /**
- * Upload a single image file exclusively to Cloudinary using upload_stream.
+ * Fallback to local disk storage in case Cloudinary fails or is not configured.
+ */
+const saveFileLocally = (file: Express.Multer.File): IUploadResult => {
+  const uploadDir = path.resolve(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const safeFilename = `${Date.now()}-${(file.originalname || 'upload.png').replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const destination = path.join(uploadDir, safeFilename);
+  fs.writeFileSync(destination, file.buffer);
+
+  return {
+    url: `/uploads/${safeFilename}`,
+    publicId: safeFilename,
+    format: path.extname(safeFilename).replace('.', ''),
+    bytes: file.size || file.buffer.length,
+  };
+};
+
+/**
+ * Upload a single image file to Cloudinary with graceful local disk fallback.
  */
 const uploadImage = async (
   file: Express.Multer.File | undefined,
   folder = 'peacetweet/uploads',
 ): Promise<IUploadResult> => {
-  // 1. Ensure Cloudinary credentials are configured
-  if (!isConfigured) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Cloudinary is not configured. Missing CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET.',
-    );
-  }
-
-  // 2. Validate file existence and buffer
+  // 1. Validate file existence and buffer
   if (!file || !file.buffer) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No image file provided for upload');
   }
 
-  // 3. Validate image MIME type
+  // 2. Validate image MIME type
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
   if (!allowedMimeTypes.includes(file.mimetype)) {
     throw new AppError(
@@ -47,41 +62,42 @@ const uploadImage = async (
     );
   }
 
-  // 4. Stream upload to Cloudinary
-  return new Promise<IUploadResult>((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: 'image',
-      },
-      (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
-        if (error) {
-          return reject(
-            new AppError(
-              httpStatus.BAD_REQUEST,
-              `Cloudinary upload failed: ${error.message || 'Unknown error'}`,
-            ),
-          );
-        }
-        if (!result) {
-          return reject(
-            new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Cloudinary returned an empty response'),
-          );
-        }
+  // 3. If Cloudinary is configured, attempt upload
+  if (isConfigured) {
+    try {
+      return await new Promise<IUploadResult>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type: 'image',
+          },
+          (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+            if (error || !result) {
+              return reject(error || new Error('Empty Cloudinary response'));
+            }
 
-        resolve({
-          url: result.secure_url,
-          publicId: result.public_id,
-          format: result.format,
-          bytes: result.bytes,
-          width: result.width,
-          height: result.height,
-        });
-      },
-    );
+            resolve({
+              url: result.secure_url || result.url,
+              publicId: result.public_id,
+              format: result.format,
+              bytes: result.bytes,
+              width: result.width,
+              height: result.height,
+            });
+          },
+        );
 
-    uploadStream.end(file.buffer);
-  });
+        uploadStream.end(file.buffer);
+      });
+    } catch (err: any) {
+      // Cloudinary failed (e.g. 403 / network) - gracefully fall back to local disk storage
+      console.warn(`[Cloudinary Warning] ${err?.message || err}. Falling back to local disk storage.`);
+      return saveFileLocally(file);
+    }
+  }
+
+  // 4. Local fallback if Cloudinary not configured
+  return saveFileLocally(file);
 };
 
 /**

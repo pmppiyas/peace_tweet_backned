@@ -16,6 +16,9 @@ const invalidateUserCache = async (userId: string, username?: string) => {
       await cacheService.delPattern('user:username:*');
     }
     await cacheService.delPattern('feed:*');
+    await cacheService.delPattern('*feed*');
+    await cacheService.delPattern('posts:*');
+    await cacheService.delPattern('*posts*');
     await cacheService.delPattern('search:*');
   } catch (err: any) {
     console.warn('Cache invalidation error in users:', err.message);

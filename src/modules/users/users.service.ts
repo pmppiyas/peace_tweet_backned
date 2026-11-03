@@ -102,7 +102,7 @@ export class UsersService {
 
   // Update user profile details
   async update(id: string, dto: UpdateUserDto): Promise<UserDto> {
-    await this.findById(id);
+    const previousUser = await this.findById(id);
 
     const updateData: Record<string, unknown> = {};
 
@@ -227,6 +227,41 @@ export class UsersService {
         updatedAt: true,
       },
     });
+
+    // Automatically create a public feed post when profile picture or cover photo is updated
+    try {
+      const nextAvatar = dto.avatarUrl !== undefined ? dto.avatarUrl?.trim() || null : undefined;
+      if (nextAvatar && nextAvatar !== previousUser.avatarUrl) {
+        await (this.prisma as any).post.create({
+          data: {
+            authorId: id,
+            type: 'TEXT',
+            content: 'Updated profile picture',
+            mediaUrls: [nextAvatar],
+            mediaLayout: 'COLLAGE',
+            visibility: 'PUBLIC',
+            status: 'PUBLISHED',
+          },
+        });
+      }
+
+      const nextCover = dto.coverUrl !== undefined ? dto.coverUrl?.trim() || null : undefined;
+      if (nextCover && nextCover !== previousUser.coverUrl) {
+        await (this.prisma as any).post.create({
+          data: {
+            authorId: id,
+            type: 'TEXT',
+            content: 'Updated cover photo',
+            mediaUrls: [nextCover],
+            mediaLayout: 'COLLAGE',
+            visibility: 'PUBLIC',
+            status: 'PUBLISHED',
+          },
+        });
+      }
+    } catch (err: any) {
+      console.warn('Auto profile/cover post creation notice:', err?.message);
+    }
 
     const { passwordHash, ...rest } = updated;
     return {
