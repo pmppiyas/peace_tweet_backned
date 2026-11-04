@@ -12,6 +12,7 @@ import { WorkersModule } from './workers/workers.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import { DuaAudiosModule } from './modules/dua-audios/dua-audios.module';
 import { DuaReferencesModule } from './modules/dua-references/dua-references.module';
 import { DuasModule } from './modules/duas/duas.module';
@@ -45,6 +46,7 @@ import { UsersModule } from './modules/users/users.module';
     DuaAudiosModule,
     BookmarksModule,
     PostsModule,
+    CommentsModule,
     UploadsModule,
   ],
   controllers: [AppController],

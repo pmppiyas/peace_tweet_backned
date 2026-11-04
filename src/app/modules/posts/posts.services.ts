@@ -11,6 +11,8 @@ import {
 import { kafkaProducerService } from '../../config/kafka';
 import { KAFKA_TOPIC_POST_CREATED } from '../../../kafka/events/post-created.event';
 
+import { commentsServices } from '../comments/comments.services';
+
 const serviceInstance = new PostsService(prisma as any);
 
 const invalidatePostCache = async (postId?: string) => {
@@ -116,15 +118,12 @@ const unreact = async (postId: string, userId: string) => {
   return result;
 };
 
-const getComments = async (postId: string, limit = 50) => {
-  const cacheKey = `posts:comments:${postId}:${limit}`;
-  return cacheService.remember(cacheKey, 60, () => serviceInstance.getComments(postId, limit));
+const getComments = async (postId: string, limit = 50, user?: any) => {
+  return commentsServices.getCommentsByPost(postId, limit, user);
 };
 
 const createComment = async (postId: string, userId: string, dto: ICreateCommentInput) => {
-  const result = await serviceInstance.createComment(postId, userId, dto as any);
-  await invalidatePostCache(postId);
-  return result;
+  return commentsServices.createComment(postId, userId, dto);
 };
 
 export const postsServices = {

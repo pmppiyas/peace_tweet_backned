@@ -3,6 +3,7 @@ import { authRoutes } from '../modules/auth/auth.routes';
 import { bloodRoutes } from '../modules/blood/blood.routes';
 import { bookmarksRoutes } from '../modules/bookmarks/bookmarks.routes';
 import { categoriesRoutes } from '../modules/categories/categories.routes';
+import { commentsRoutes } from '../modules/comments/comments.routes';
 import { duaAudiosRoutes } from '../modules/dua-audios/dua-audios.routes';
 import { duaReferencesRoutes } from '../modules/dua-references/dua-references.routes';
 import { duasRoutes } from '../modules/duas/duas.routes';
@@ -29,6 +30,7 @@ const moduleRouter = [
   { path: '/friends', route: friendsRoutes },
   { path: '/groups', route: groupsRoutes },
   { path: '/posts', route: postsRoutes },
+  { path: '/comments', route: commentsRoutes },
   { path: '/feed', route: feedRoutes },
   { path: '/shares', route: sharesRoutes },
   { path: '/notifications', route: notificationsRoutes },
