@@ -22,10 +22,19 @@ export const checkAuth =
 
       const verifiedToken = verifyToken(accessToken, envVar.JWT_SOLT) as JwtPayload;
 
-      const userId = (verifiedToken.id || verifiedToken.sub) as string;
+      const userId = (
+        verifiedToken?.id ||
+        verifiedToken?.sub ||
+        (verifiedToken as any)?.userId ||
+        (verifiedToken as any)?._id
+      ) as string;
+
+      if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid authentication session. Please sign in again.');
+      }
 
       const isUserExist = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { id: userId.trim() },
       });
 
       if (!isUserExist) {
@@ -67,13 +76,18 @@ export const optionalAuth =
       }
 
       const verifiedToken = verifyToken(accessToken, envVar.JWT_SOLT) as JwtPayload;
-      const userId = (verifiedToken.id || verifiedToken.sub) as string;
+      const userId = (
+        verifiedToken?.id ||
+        verifiedToken?.sub ||
+        (verifiedToken as any)?.userId ||
+        (verifiedToken as any)?._id
+      ) as string;
 
-      if (userId) {
+      if (userId && typeof userId === 'string' && userId.trim() !== '') {
         req.user = {
           ...verifiedToken,
-          id: userId,
-          sub: userId,
+          id: userId.trim(),
+          sub: userId.trim(),
         };
       }
       next();

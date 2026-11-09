@@ -184,16 +184,22 @@ async function main() {
   // 6. Seed Badges
   console.log('--- Seeding Badges ---');
   const defaultBadges = [
+    // Standard & Verification
     'NON VERIFIED',
     'VERIFIED',
     'STANDARD MEMBER',
+
+    // Community & Peace
     'PEACE MAKER',
     'PEACE AMBASSADOR',
     'SOCIAL REFORMER',
     'COMMUNITY HERO',
-    'TREE PLANTER',
-    'NATURE GUARDIAN',
     'PHILOSOPHER',
+
+    // Blood Donation & Life Saving
+    'LIFE SAVER',
+    'GOLDEN DONOR',
+    'EMERGENCY RESPONDER',
     'A(+) DONOR',
     'A(-) DONOR',
     'B(+) DONOR',
@@ -202,6 +208,25 @@ async function main() {
     'O(-) DONOR',
     'AB(+) DONOR',
     'AB(-) DONOR',
+
+    // Spiritual & Moral Deeds
+    'DUA WARRIOR',
+    'WISDOM SHARER',
+    'HOPE GIVER',
+
+    // Social Work & Kindness
+    'HELPING HAND',
+    'KINDNESS CHAMPION',
+    'GENEROUS HEART',
+
+    // Truth & Reliability
+    'TRUTH SEEKER',
+    'TRUSTED VOICE',
+
+    // Environment & Cleanliness
+    'TREE PLANTER',
+    'NATURE GUARDIAN',
+    'CLEAN CAMPAIGNER',
   ];
 
   for (const bName of defaultBadges) {

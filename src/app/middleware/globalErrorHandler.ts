@@ -23,19 +23,29 @@ export const globalErrorHandler = async (
         ? err.statusCode
         : httpStatus.INTERNAL_SERVER_ERROR;
   const success = false;
-  let message = err?.response?.message || err?.message || 'Something went wrong!';
-  if (Array.isArray(message)) {
-    message = message.join(', ');
-  }
+  let message = 'Something went wrong. Please try again.';
   let errorSources: any = [];
+
+  // Log full internal error on server console for developers/observability
+  console.error(`[Backend Error] [${req.method}] ${req.originalUrl}:`, err?.message || err);
+
+  const isPrismaError =
+    err instanceof Prisma.PrismaClientKnownRequestError ||
+    err instanceof Prisma.PrismaClientValidationError ||
+    err instanceof Prisma.PrismaClientUnknownRequestError ||
+    err instanceof Prisma.PrismaClientInitializationError ||
+    err instanceof Prisma.PrismaClientRustPanicError ||
+    err?.name?.includes?.('Prisma') ||
+    (typeof err?.message === 'string' &&
+      (err.message.includes('prisma.') || err.message.includes('PrismaClient')));
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     const simplifiedError = handlePrismaValidatonError(err);
     statusCode = simplifiedError.statusCode;
     message = simplifiedError.message;
-  } else if (err instanceof Prisma.PrismaClientValidationError) {
+  } else if (isPrismaError) {
     statusCode = httpStatus.BAD_REQUEST;
-    message = 'Invalid data provided to database query.';
+    message = 'Invalid data provided for database operation.';
   } else if (err?.code === 11000) {
     const simplifiedError = handleDuplicateError(err);
     statusCode = simplifiedError.statusCode;
@@ -46,10 +56,26 @@ export const globalErrorHandler = async (
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   } else if (err instanceof AppError) {
+    // Trusted operational error with user-safe message
     statusCode = err.statusCode;
     message = err.message;
   } else if (err instanceof Error) {
-    message = err.message;
+    // Untrusted runtime or library error: Never leak file paths or stack traces!
+    const rawMsg = err.message || '';
+    const hasSensitiveTraces =
+      rawMsg.includes('\n') ||
+      rawMsg.includes('\\') ||
+      rawMsg.includes('/') ||
+      rawMsg.includes('.ts:') ||
+      rawMsg.includes('.js:') ||
+      rawMsg.includes('invocation in');
+
+    if (!hasSensitiveTraces && rawMsg.length > 0 && rawMsg.length < 150) {
+      message = rawMsg;
+    } else {
+      statusCode = httpStatus.INTERNAL_SERVER_ERROR;
+      message = 'An unexpected server error occurred. Please try again.';
+    }
   }
 
   res.status(statusCode).json({
@@ -57,6 +83,9 @@ export const globalErrorHandler = async (
     statusCode,
     message,
     errorSources,
-    error: envVar.NODE_ENV === 'development' ? err : null,
+    error:
+      envVar.NODE_ENV === 'development'
+        ? { name: err?.name, message: message }
+        : null,
   });
 };

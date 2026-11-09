@@ -39,15 +39,45 @@ export const createPostZodSchema = z.object({
 });
 
 export const updatePostZodSchema = z.object({
-  content: z.string().min(1).max(5000).optional(),
+  content: z.string().max(5000).optional(),
   type: z.nativeEnum(PostType).optional(),
   visibility: z.nativeEnum(PostVisibility).optional(),
   status: z.nativeEnum(PostStatus).optional(),
   mediaUrls: z.array(z.string()).optional(),
   mediaLayout: z.string().optional(),
-  feeling: z.string().optional(),
+  feeling: z.string().optional().nullable(),
   duaId: z.string().uuid().optional().nullable(),
+  duaData: z
+    .object({
+      title: z.string().optional(),
+      transliteration: z.string().optional(),
+      meaning: z.string().optional(),
+      meaningBangla: z.string().optional(),
+      fadilah: z.string().optional(),
+      arabicText: z.string().optional(),
+    })
+    .optional(),
   bloodRequestId: z.string().uuid().optional().nullable(),
+  bloodRequestData: z
+    .object({
+      patientName: z.string().min(1).optional(),
+      patientAge: z.number().int().optional().nullable(),
+      problem: z.string().optional().nullable(),
+      bloodGroup: z.string().optional(),
+      units: z.number().int().min(1).optional(),
+      hospitalName: z.string().min(1).optional(),
+      country: z.string().optional(),
+      countryCode: z.string().optional(),
+      state: z.string().optional().nullable(),
+      city: z.string().optional().nullable(),
+      location: z.string().min(1).optional(),
+      contactNumber: z.string().min(1).optional(),
+      alternateContact: z.string().optional().nullable(),
+      neededDate: z.string().optional(),
+      forMyself: z.boolean().optional(),
+      note: z.string().optional().nullable(),
+    })
+    .optional(),
 });
 
 export const createCommentZodSchema = z.object({

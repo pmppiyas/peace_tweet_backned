@@ -527,6 +527,57 @@ export class PostsService {
       throw new ForbiddenException('You are not authorized to edit this post.');
     }
 
+    if (post.duaId && dto.duaData) {
+      const dData = dto.duaData;
+      await this.prisma.dua.update({
+        where: { id: post.duaId },
+        data: {
+          ...((dData.meaning !== undefined || dData.meaningBangla !== undefined) && {
+            meaning: (dData.meaning || dData.meaningBangla || '').trim(),
+          }),
+          ...(dData.transliteration !== undefined && {
+            transliteration: dData.transliteration?.trim() || null,
+          }),
+          ...(dData.fadilah !== undefined && {
+            fadilah: dData.fadilah?.trim() || null,
+          }),
+          ...(dData.arabicText !== undefined && {
+            arabicText: dData.arabicText?.trim() || null,
+          }),
+        },
+      });
+    }
+
+    if (post.bloodRequestId && dto.bloodRequestData) {
+      const bData = dto.bloodRequestData;
+      await this.prisma.bloodRequest.update({
+        where: { id: post.bloodRequestId },
+        data: {
+          ...(bData.patientName && { patientName: bData.patientName.trim() }),
+          ...(bData.patientAge !== undefined && {
+            patientAge: bData.patientAge ? Number(bData.patientAge) : null,
+          }),
+          ...(bData.problem !== undefined && {
+            problem: bData.problem?.trim() || null,
+          }),
+          ...(bData.bloodGroup && { bloodGroup: bData.bloodGroup as any }),
+          ...(bData.units !== undefined && { units: Number(bData.units) || 1 }),
+          ...(bData.hospitalName && { hospitalName: bData.hospitalName.trim() }),
+          ...(bData.location && { location: bData.location.trim() }),
+          ...(bData.country !== undefined && { country: bData.country }),
+          ...(bData.countryCode !== undefined && { countryCode: bData.countryCode }),
+          ...(bData.state !== undefined && { state: bData.state }),
+          ...(bData.city !== undefined && { city: bData.city }),
+          ...(bData.contactNumber && { contactNumber: bData.contactNumber.trim() }),
+          ...(bData.alternateContact !== undefined && {
+            alternateContact: bData.alternateContact?.trim() || null,
+          }),
+          ...(bData.neededDate && { neededDate: new Date(bData.neededDate) }),
+          ...(bData.forMyself !== undefined && { forMyself: Boolean(bData.forMyself) }),
+        },
+      });
+    }
+
     const updated = await this.db.post.update({
       where: { id },
       data: {
@@ -554,6 +605,19 @@ export class PostsService {
               },
             },
             audios: true,
+          },
+        },
+        bloodRequest: {
+          include: {
+            requester: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+            donations: true,
           },
         },
         originalPost: {

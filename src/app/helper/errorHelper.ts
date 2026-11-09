@@ -31,7 +31,7 @@ export const handlePrismaValidatonError = (error: Prisma.PrismaClientKnownReques
     }
     default: {
       statusCode = httpStatus.BAD_REQUEST;
-      message = error.message || 'Database request error.';
+      message = 'Database operation failed. Please check your request.';
       break;
     }
   }

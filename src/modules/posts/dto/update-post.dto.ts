@@ -51,4 +51,40 @@ export class UpdatePostDto {
   @IsOptional()
   @IsEnum(PostStatus)
   status?: PostStatus;
+
+  @ApiPropertyOptional({
+    description: 'Embedded Dua data to update the attached Dua.',
+  })
+  @IsOptional()
+  duaData?: {
+    title?: string;
+    transliteration?: string;
+    meaning?: string;
+    meaningBangla?: string;
+    fadilah?: string;
+    arabicText?: string;
+  };
+
+  @ApiPropertyOptional({
+    description: 'Embedded Blood Request data to update the attached blood request.',
+  })
+  @IsOptional()
+  bloodRequestData?: {
+    patientName?: string;
+    patientAge?: number;
+    problem?: string;
+    bloodGroup?: any;
+    units?: number;
+    hospitalName?: string;
+    country?: string;
+    countryCode?: string;
+    state?: string;
+    city?: string;
+    location?: string;
+    contactNumber?: string;
+    alternateContact?: string;
+    neededDate?: string | Date;
+    forMyself?: boolean;
+    note?: string;
+  };
 }
