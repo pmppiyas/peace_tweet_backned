@@ -184,10 +184,9 @@ async function main() {
   // 6. Seed Badges
   console.log('--- Seeding Badges ---');
   const defaultBadges = [
-    // Standard & Verification
+    // Verification
     'NON VERIFIED',
     'VERIFIED',
-    'STANDARD MEMBER',
 
     // Community & Peace
     'PEACE MAKER',
