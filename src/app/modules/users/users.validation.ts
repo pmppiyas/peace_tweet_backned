@@ -19,7 +19,7 @@ export const updateUserZodSchema = z.object({
   city: z.string().max(100).optional().nullable(),
   bloodGroup: z.nativeEnum(BloodGroup).optional().nullable(),
   bio: z.string().max(250).optional().nullable(),
-  badge: z.string().max(50).optional(),
+  badges: z.array(z.string()).optional(),
   userStatus: z.enum(['NON_VERIFIED', 'VERIFIED', 'PREMIUM']).optional(),
   isDonor: z.boolean().optional(),
   donationCount: z.number().int().min(0).optional(),

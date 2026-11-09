@@ -181,6 +181,38 @@ async function main() {
     }
   }
 
+  // 6. Seed Badges
+  console.log('--- Seeding Badges ---');
+  const defaultBadges = [
+    'NON VERIFIED',
+    'VERIFIED',
+    'STANDARD MEMBER',
+    'PEACE MAKER',
+    'PEACE AMBASSADOR',
+    'SOCIAL REFORMER',
+    'COMMUNITY HERO',
+    'TREE PLANTER',
+    'NATURE GUARDIAN',
+    'PHILOSOPHER',
+    'A(+) DONOR',
+    'A(-) DONOR',
+    'B(+) DONOR',
+    'B(-) DONOR',
+    'O(+) DONOR',
+    'O(-) DONOR',
+    'AB(+) DONOR',
+    'AB(-) DONOR',
+  ];
+
+  for (const bName of defaultBadges) {
+    await prisma.badge.upsert({
+      where: { name: bName },
+      update: {},
+      create: { name: bName },
+    });
+  }
+  console.log(`✅ Seeded ${defaultBadges.length} Badges`);
+
   console.log('\n🎉 Database Seeding completed successfully!');
 }
 

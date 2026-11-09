@@ -50,6 +50,7 @@ export interface IUserProfile {
   city?: string | null;
   location?: string | null;
   bloodGroup?: BloodGroup | null;
+  badges?: { id: string; name: string }[];
   isDonor?: boolean;
   donationCount?: number;
   hasPassword?: boolean;

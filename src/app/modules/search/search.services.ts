@@ -61,7 +61,12 @@ const searchGlobal = async (params: SearchQueryParams) => {
               username: true,
               avatarUrl: true,
               userStatus: true,
-              badge: true,
+              badges: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
             take: limit,
           })

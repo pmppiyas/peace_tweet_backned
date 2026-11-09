@@ -46,8 +46,8 @@ export class UserDto {
   @ApiPropertyOptional({ example: 'Seeking peace and spiritual knowledge' })
   bio?: string | null;
 
-  @ApiPropertyOptional({ example: 'Standard Member' })
-  badge?: string;
+  @ApiPropertyOptional({ example: [{ id: 'uuid', name: 'NON VERIFIED' }] })
+  badges?: { id: string; name: string }[];
 
   @ApiPropertyOptional({ example: 'NON_VERIFIED' })
   userStatus?: string;

@@ -87,11 +87,9 @@ export class UpdateUserDto {
   @MaxLength(250)
   bio?: string;
 
-  @ApiPropertyOptional({ example: 'Standard Member' })
+  @ApiPropertyOptional({ example: ['NON VERIFIED', 'B(+) DONOR'] })
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  badge?: string;
+  badges?: string[];
 
   @ApiPropertyOptional({ example: 'NON_VERIFIED' })
   @IsOptional()

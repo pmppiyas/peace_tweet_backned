@@ -37,7 +37,12 @@ export class UsersService {
         location: true,
         bloodGroup: true,
         bio: true,
-        badge: true,
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         userStatus: true,
         isDonor: true,
         donationCount: true,
@@ -79,7 +84,12 @@ export class UsersService {
         location: true,
         bloodGroup: true,
         bio: true,
-        badge: true,
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         userStatus: true,
         isDonor: true,
         donationCount: true,
@@ -183,8 +193,17 @@ export class UsersService {
       updateData.bio = dto.bio?.trim() || null;
     }
 
-    if (dto.badge !== undefined) {
-      updateData.badge = dto.badge?.trim();
+    if (dto.badges !== undefined && Array.isArray(dto.badges)) {
+      updateData.badges = {
+        set: [],
+        connectOrCreate: dto.badges
+          .map((b) => b?.trim())
+          .filter(Boolean)
+          .map((bName) => ({
+            where: { name: bName },
+            create: { name: bName },
+          })),
+      };
     }
 
     if (dto.userStatus !== undefined) {
@@ -217,7 +236,12 @@ export class UsersService {
         location: true,
         bloodGroup: true,
         bio: true,
-        badge: true,
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         userStatus: true,
         isDonor: true,
         donationCount: true,

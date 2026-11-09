@@ -10,7 +10,7 @@ model User {
   authProvider AuthProvider @default(LOCAL)
   role         Role         @default(USER)
   userStatus   UserStatus   @default(NON_VERIFIED)
-  badge        String       @default("Standard Member")
+  badges       Badge[]      @relation("UserBadges")
   bio          String?      @db.Text
   refreshToken String?      @db.Text
   avatarUrl    String?

@@ -87,6 +87,12 @@ export class AuthService {
         avatarUrl: dto.avatarUrl?.trim() || null,
         location: dto.location?.trim() || null,
         bloodGroup: dto.bloodGroup || null,
+        badges: {
+          connectOrCreate: {
+            where: { name: 'NON VERIFIED' },
+            create: { name: 'NON VERIFIED' },
+          },
+        },
       },
       select: {
         id: true,
@@ -97,6 +103,12 @@ export class AuthService {
         avatarUrl: true,
         location: true,
         bloodGroup: true,
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },

@@ -107,6 +107,12 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
       city: dto.city?.trim() || null,
       location: dto.location?.trim() || null,
       bloodGroup: dto.bloodGroup || null,
+      badges: {
+        connectOrCreate: {
+          where: { name: 'NON VERIFIED' },
+          create: { name: 'NON VERIFIED' },
+        },
+      },
     },
     select: {
       id: true,
@@ -121,6 +127,12 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
       city: true,
       location: true,
       bloodGroup: true,
+      badges: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       createdAt: true,
       updatedAt: true,
     },
@@ -132,7 +144,12 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
   return {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
-    user: { ...user, hasPassword: true, needPasswordUpdate: false },
+    user: {
+      ...user,
+      badges: user.badges || [],
+      hasPassword: true,
+      needPasswordUpdate: false,
+    },
   };
 };
 
@@ -142,6 +159,14 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
   const user = await prisma.user.findFirst({
     where: {
       OR: [{ email: identifier }, { username: identifier }],
+    },
+    include: {
+      badges: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 
@@ -174,6 +199,7 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
     city: user.city,
     location: user.location,
     bloodGroup: user.bloodGroup,
+    badges: user.badges || [],
     isDonor: user.isDonor,
     donationCount: user.donationCount,
     hasPassword: true,
@@ -347,12 +373,28 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
   // 1. Look up by facebookId first
   let user = await prisma.user.findUnique({
     where: { facebookId: fbProfile.id },
+    include: {
+      badges: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
   });
 
   if (!user && fbProfile.email) {
     // 2. Look up by email — link existing account
     user = await prisma.user.findUnique({
       where: { email: fbProfile.email.toLowerCase().trim() },
+      include: {
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (user) {
@@ -362,6 +404,14 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
         data: {
           facebookId: fbProfile.id,
           avatarUrl: user.avatarUrl || fbProfile.picture?.data?.url || null,
+        },
+        include: {
+          badges: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       });
     }
@@ -386,6 +436,20 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
         authProvider: AuthProvider.FACEBOOK,
         role: Role.USER,
         avatarUrl: fbProfile.picture?.data?.url || null,
+        badges: {
+          connectOrCreate: {
+            where: { name: 'NON VERIFIED' },
+            create: { name: 'NON VERIFIED' },
+          },
+        },
+      },
+      include: {
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
   }
@@ -403,6 +467,7 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
     city: user.city,
     location: user.location,
     bloodGroup: user.bloodGroup,
+    badges: user.badges || [],
     isDonor: user.isDonor,
     donationCount: user.donationCount,
     hasPassword: Boolean(user.passwordHash),
@@ -544,12 +609,28 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
   // 1. Look up by googleId first
   let user = await prisma.user.findUnique({
     where: { googleId: googleProfile.sub },
+    include: {
+      badges: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
   });
 
   if (!user && googleProfile.email) {
     // 2. Look up by email — link existing account
     user = await prisma.user.findUnique({
       where: { email: googleProfile.email.toLowerCase().trim() },
+      include: {
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (user) {
@@ -558,6 +639,14 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
         data: {
           googleId: googleProfile.sub,
           avatarUrl: user.avatarUrl || googleProfile.picture || null,
+        },
+        include: {
+          badges: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       });
     }
@@ -582,6 +671,20 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
         authProvider: AuthProvider.GOOGLE,
         role: Role.USER,
         avatarUrl: googleProfile.picture || null,
+        badges: {
+          connectOrCreate: {
+            where: { name: 'NON VERIFIED' },
+            create: { name: 'NON VERIFIED' },
+          },
+        },
+      },
+      include: {
+        badges: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
   }
@@ -599,6 +702,7 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
     city: user.city,
     location: user.location,
     bloodGroup: user.bloodGroup,
+    badges: user.badges || [],
     isDonor: user.isDonor,
     donationCount: user.donationCount,
     hasPassword: Boolean(user.passwordHash),

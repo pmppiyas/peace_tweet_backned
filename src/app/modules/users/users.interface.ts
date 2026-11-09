@@ -13,7 +13,7 @@ export interface IUpdateUserInput {
   city?: string | null;
   bloodGroup?: BloodGroup;
   bio?: string;
-  badge?: string;
+  badges?: string[];
   userStatus?: any;
   isDonor?: boolean;
   donationCount?: number;

@@ -786,7 +786,12 @@ const getAvailableDonors = async (query: IDonorQuery) => {
           bio: true,
           isDonor: true,
           donationCount: true,
-          badge: true,
+          badges: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           userStatus: true,
         },
       }),
