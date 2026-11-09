@@ -100,6 +100,11 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
     const onlineUserIds = Array.from(onlineUsers.keys());
     socket.emit('users:online_list', onlineUserIds);
 
+    // Allow clients to explicitly request the fresh online list at any time
+    socket.on('users:get_online', () => {
+      socket.emit('users:online_list', Array.from(onlineUsers.keys()));
+    });
+
     // 1. Send Message Event
     socket.on(
       'message:send',
@@ -118,12 +123,22 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
           }
 
           const savedMessage = await chatServices.saveMessage(userId, payload);
+          const isReceiverOnline = (onlineUsers.get(payload.receiverId) || 0) > 0;
 
           // Emit to receiver's private room
           io?.to(`user:${payload.receiverId}`).emit('message:received', savedMessage);
 
           // Emit to sender's own socket
           socket.emit('message:sent', savedMessage);
+
+          // If receiver is currently connected, notify sender immediately that it was delivered
+          if (isReceiverOnline) {
+            socket.emit('message:delivered', {
+              conversationId: savedMessage.conversationId,
+              messageId: savedMessage.id,
+              receiverId: payload.receiverId,
+            });
+          }
 
           // Emit conversation update (last message, timestamp) to both users
           const convUpdate = {
@@ -159,6 +174,19 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
           senderName: user.name,
           conversationId: payload.conversationId,
           isTyping: payload.isTyping,
+        });
+      },
+    );
+
+    // 2.1 Message Delivered Acknowledgment Event
+    socket.on(
+      'message:delivered',
+      (payload: { conversationId: string; senderId: string; messageId?: string }) => {
+        if (!payload.senderId) return;
+        io?.to(`user:${payload.senderId}`).emit('message:delivered', {
+          conversationId: payload.conversationId,
+          messageId: payload.messageId,
+          deliveredTo: userId,
         });
       },
     );
@@ -324,6 +352,7 @@ export const emitMessageToUsers = (message: any) => {
     if (!io || !message) return;
     const { receiverId, senderId, conversationId, text, createdAt } = message;
     if (receiverId) {
+      const isReceiverOnline = (onlineUsers.get(receiverId) || 0) > 0;
       io.to(`user:${receiverId}`).emit('message:received', message);
       io.to(`user:${receiverId}`).emit('conversation:updated', {
         conversationId,
@@ -332,6 +361,14 @@ export const emitMessageToUsers = (message: any) => {
         senderId,
         unreadDelta: 1,
       });
+
+      if (senderId && isReceiverOnline) {
+        io.to(`user:${senderId}`).emit('message:delivered', {
+          conversationId,
+          messageId: message.id,
+          receiverId,
+        });
+      }
     }
     if (senderId) {
       io.to(`user:${senderId}`).emit('message:sent', message);
