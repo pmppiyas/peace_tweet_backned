@@ -21,6 +21,12 @@ export class UserProfileDto {
   @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/avatar.png' })
   avatarUrl?: string | null;
 
+  @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/v1/cover.png' })
+  coverUrl?: string | null;
+
+  @ApiPropertyOptional({ example: 'Seeking peace and spiritual knowledge' })
+  bio?: string | null;
+
   @ApiPropertyOptional({ example: 'Dhaka, Bangladesh' })
   location?: string | null;
 

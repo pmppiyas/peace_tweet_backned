@@ -44,6 +44,8 @@ export interface IUserProfile {
   email: string;
   role: Role;
   avatarUrl?: string | null;
+  coverUrl?: string | null;
+  bio?: string | null;
   country?: string | null;
   countryCode?: string | null;
   state?: string | null;
