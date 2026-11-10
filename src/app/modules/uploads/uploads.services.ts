@@ -53,12 +53,14 @@ const uploadImage = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'No image file provided for upload');
   }
 
-  // 2. Validate image MIME type
-  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-  if (!allowedMimeTypes.includes(file.mimetype)) {
+  // 2. Validate image MIME type (supports any image format: JPEG, PNG, WEBP, GIF, SVG, HEIC, HEIF, AVIF, BMP, etc.)
+  const isImage =
+    Boolean(file.mimetype && file.mimetype.startsWith('image/')) ||
+    /\.(jpg|jpeg|png|webp|gif|svg|heic|heif|avif|bmp|tiff|ico)$/i.test(file.originalname || '');
+  if (!isImage) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Invalid file type '${file.mimetype}'. Only JPEG, PNG, WEBP, GIF, and SVG images are allowed.`,
+      `Invalid file type '${file.mimetype}'. Only image files are allowed.`,
     );
   }
 
