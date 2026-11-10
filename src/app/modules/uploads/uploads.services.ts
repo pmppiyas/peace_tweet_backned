@@ -54,7 +54,7 @@ const uploadImage = async (
   }
 
   // 2. Validate image MIME type
-  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
   if (!allowedMimeTypes.includes(file.mimetype)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,

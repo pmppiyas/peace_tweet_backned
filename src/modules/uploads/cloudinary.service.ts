@@ -51,6 +51,7 @@ export class CloudinaryService {
     // Validate image mimetype
     const allowedMimeTypes = [
       'image/jpeg',
+      'image/jpg',
       'image/png',
       'image/webp',
       'image/gif',
