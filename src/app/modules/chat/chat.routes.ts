@@ -20,6 +20,12 @@ router.post(
   chatController.getOrCreateConversation,
 );
 
+router.delete(
+  '/conversations/:conversationId',
+  checkAuth(),
+  chatController.deleteConversation,
+);
+
 // Message fetching (supports both /messages/:conversationId and /conversations/:conversationId/messages)
 router.get(
   '/messages/:conversationId',

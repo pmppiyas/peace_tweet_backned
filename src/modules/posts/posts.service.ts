@@ -121,7 +121,7 @@ export class PostsService {
         type: dto.type,
         content: dto.content?.trim() || null,
         mediaUrls: normalizedMediaUrls,
-        mediaLayout: dto.mediaLayout === 'SWIPE' ? 'SWIPE' : 'COLLAGE',
+        mediaLayout: dto.mediaLayout ? dto.mediaLayout.trim() : 'COLLAGE',
         feeling: dto.feeling?.trim() || null,
         duaId: finalDuaId,
         bloodRequestId: finalBloodRequestId,

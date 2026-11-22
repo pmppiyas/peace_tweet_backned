@@ -67,11 +67,21 @@ const getOrCreateConversation = async (userAId: string, userBId: string) => {
       ? conversation.participantTwo
       : conversation.participantOne;
 
+  const clearedRows = await prisma.$queryRawUnsafe<
+    Array<{ cleared_at: Date }>
+  >(
+    `SELECT cleared_at FROM conversation_cleared WHERE conversation_id = $1 AND user_id = $2 LIMIT 1`,
+    conversation.id,
+    userAId,
+  ).catch(() => []);
+  const clearedAt = clearedRows[0]?.cleared_at ? new Date(clearedRows[0].cleared_at) : null;
+
   const unreadCount = await prisma.message.count({
     where: {
       conversationId: conversation.id,
       senderId: { not: userAId },
       isRead: false,
+      ...(clearedAt ? { createdAt: { gt: clearedAt } } : {}),
     },
   });
 
@@ -93,6 +103,28 @@ const getOrCreateConversation = async (userAId: string, userBId: string) => {
  * Get all conversations for a user (Inbox listing)
  */
 const getConversations = async (userId: string) => {
+  // Ensure table exists
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS conversation_cleared (
+      conversation_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64) NOT NULL,
+      cleared_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (conversation_id, user_id)
+    );
+  `).catch(() => {});
+
+  const clearedRows = await prisma.$queryRawUnsafe<
+    Array<{ conversation_id: string; cleared_at: Date }>
+  >(
+    `SELECT conversation_id, cleared_at FROM conversation_cleared WHERE user_id = $1`,
+    userId,
+  ).catch(() => []);
+
+  const clearedMap = new Map<string, Date>();
+  for (const row of clearedRows) {
+    clearedMap.set(row.conversation_id, new Date(row.cleared_at));
+  }
+
   const conversations = await prisma.conversation.findMany({
     where: {
       OR: [
@@ -127,16 +159,28 @@ const getConversations = async (userId: string) => {
         },
         select: {
           id: true,
+          createdAt: true,
         },
       },
     },
   });
 
-  return conversations.map((conv) => {
+  const visibleConversations = conversations.filter((conv) => {
+    const clearedAt = clearedMap.get(conv.id);
+    if (!clearedAt) return true;
+    if (!conv.lastMessageAt) return false;
+    return new Date(conv.lastMessageAt) > clearedAt;
+  });
+
+  return visibleConversations.map((conv) => {
     // The other person in this conversation
     const otherParticipant =
       conv.participantOneId === userId ? conv.participantTwo : conv.participantOne;
-    const unreadCount = conv.messages.length;
+    const clearedAt = clearedMap.get(conv.id);
+    const unreadCount = conv.messages.filter((m) => {
+      if (!clearedAt) return true;
+      return new Date(m.createdAt) > clearedAt;
+    }).length;
 
     return {
       id: conv.id,
@@ -176,11 +220,27 @@ const getMessages = async (
     throw new Error('Conversation not found or access denied.');
   }
 
+  // Check if this user cleared this conversation previously
+  const clearedRows = await prisma.$queryRawUnsafe<
+    Array<{ cleared_at: Date }>
+  >(
+    `SELECT cleared_at FROM conversation_cleared WHERE conversation_id = $1 AND user_id = $2 LIMIT 1`,
+    conversationId,
+    userId,
+  ).catch(() => []);
+
+  const clearedAt = clearedRows[0]?.cleared_at ? new Date(clearedRows[0].cleared_at) : null;
+
   const limit = Math.max(1, Math.min(50, Number(query.limit) || 20));
   const cursor = query.cursor;
 
+  const whereClause: any = { conversationId };
+  if (clearedAt) {
+    whereClause.createdAt = { gt: clearedAt };
+  }
+
   const messages = await prisma.message.findMany({
-    where: { conversationId },
+    where: whereClause,
     take: limit + 1,
     skip: cursor ? 1 : 0,
     cursor: cursor ? { id: cursor } : undefined,
@@ -443,6 +503,48 @@ const deleteMessage = async (userId: string, messageId: string) => {
   };
 };
 
+/**
+ * Delete / Clear a conversation for the requesting user
+ * (The other participant still retains the conversation and their messages)
+ */
+const deleteConversation = async (userId: string, conversationId: string) => {
+  const conversation = await prisma.conversation.findFirst({
+    where: {
+      id: conversationId,
+      OR: [{ participantOneId: userId }, { participantTwoId: userId }],
+    },
+  });
+
+  if (!conversation) {
+    throw new Error('Conversation not found.');
+  }
+
+  // Ensure table exists
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS conversation_cleared (
+      conversation_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64) NOT NULL,
+      cleared_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (conversation_id, user_id)
+    );
+  `).catch(() => {});
+
+  // Record that this user cleared/deleted this conversation at current timestamp
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO conversation_cleared (conversation_id, user_id, cleared_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (conversation_id, user_id)
+     DO UPDATE SET cleared_at = NOW()`,
+    conversationId,
+    userId,
+  );
+
+  return {
+    conversationId,
+    deletedByUserId: userId,
+  };
+};
+
 export const chatServices = {
   getOrCreateConversation,
   getConversations,
@@ -451,4 +553,5 @@ export const chatServices = {
   markAsRead,
   editMessage,
   deleteMessage,
+  deleteConversation,
 };

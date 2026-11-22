@@ -452,3 +452,20 @@ export const emitMessageDeleted = (deleted: any) => {
     console.warn('Socket error on emitMessageDeleted:', err?.message);
   }
 };
+
+/**
+ * Emit conversation deletion to all participants
+ */
+export const emitConversationDeleted = (
+  conversationId: string,
+  participantIds: string[],
+) => {
+  try {
+    if (!io || !conversationId) return;
+    participantIds.forEach((pid) => {
+      io?.to(`user:${pid}`).emit('conversation:deleted', { conversationId });
+    });
+  } catch (err: any) {
+    console.warn('Socket error on emitConversationDeleted:', err?.message);
+  }
+};

@@ -8,6 +8,7 @@ import {
   emitMessageToUsers,
   emitMessageUpdated,
   emitMessageDeleted,
+  emitConversationDeleted,
 } from '../../../socket';
 
 const getConversations = catchAsync(async (req: Request & { user?: any }, res: Response) => {
@@ -85,6 +86,17 @@ const markAsRead = catchAsync(async (req: Request & { user?: any }, res: Respons
   });
 });
 
+const deleteConversation = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const result = await chatServices.deleteConversation(req.user.id, req.params.conversationId);
+  emitConversationDeleted(result.conversationId, [req.user.id]);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Conversation deleted successfully for user',
+    data: { conversationId: result.conversationId },
+  });
+});
+
 export const chatController = {
   getConversations,
   getOrCreateConversation,
@@ -92,5 +104,6 @@ export const chatController = {
   sendMessage,
   editMessage,
   deleteMessage,
+  deleteConversation,
   markAsRead,
 };

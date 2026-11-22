@@ -8,10 +8,7 @@ import { GroupVisibility } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { Role } from '../../common/enums/role.enum';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
-import {
-  emitNotificationToUser,
-  emitUnreadNotificationCount,
-} from '../../socket';
+import { emitNotificationToUser, emitUnreadNotificationCount } from '../../socket';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 
@@ -71,11 +68,7 @@ export class CommentsService {
     return { rootComments, nodeMap };
   }
 
-  async getCommentsByPost(
-    postId: string,
-    limit = 50,
-    currentUser?: ActiveUserData,
-  ) {
+  async getCommentsByPost(postId: string, limit = 50, currentUser?: ActiveUserData) {
     const post = await this.db.post.findUnique({
       where: { id: postId },
     });
@@ -155,16 +148,12 @@ export class CommentsService {
         where: { id: dto.parentId },
       });
       if (!parentComment) {
-        throw new NotFoundException(
-          `Parent comment with ID '${dto.parentId}' not found.`,
-        );
+        throw new NotFoundException(`Parent comment with ID '${dto.parentId}' not found.`);
       }
       if (!resolvedPostId) {
         resolvedPostId = parentComment.postId;
       } else if (parentComment.postId !== resolvedPostId) {
-        throw new BadRequestException(
-          'Parent comment does not belong to the specified post.',
-        );
+        throw new BadRequestException('Parent comment does not belong to the specified post.');
       }
     }
 
@@ -176,9 +165,7 @@ export class CommentsService {
       where: { id: resolvedPostId },
     });
     if (!post) {
-      throw new NotFoundException(
-        `Post with ID '${resolvedPostId}' not found.`,
-      );
+      throw new NotFoundException(`Post with ID '${resolvedPostId}' not found.`);
     }
 
     if (post.groupId) {
@@ -216,18 +203,14 @@ export class CommentsService {
     const previewText = `${trimmedContent.slice(0, 50)}${trimmedContent.length > 50 ? '...' : ''}`;
 
     // Notify parent comment author when someone replies to their comment
-    if (
-      parentComment &&
-      parentComment.authorId &&
-      parentComment.authorId !== userId
-    ) {
+    if (parentComment && parentComment.authorId && parentComment.authorId !== userId) {
       this.db.notification
         .create({
           data: {
             recipientId: parentComment.authorId,
             actorId: userId,
             type: 'POST_COMMENT' as any,
-            message: `replied to your comment: "${previewText}"`,
+            message: 'replied to your comment',
             entityId: resolvedPostId,
             entityType: 'POST',
           },
@@ -251,24 +234,18 @@ export class CommentsService {
             emitUnreadNotificationCount(parentComment.authorId, unread);
           }
         })
-        .catch((e: any) =>
-          console.error('Notification error on comment reply:', e),
-        );
+        .catch((e: any) => console.error('Notification error on comment reply:', e));
     }
 
     // Notify post author if they are not the commenter and weren't already notified as parentComment author
-    if (
-      post.authorId &&
-      post.authorId !== userId &&
-      post.authorId !== parentComment?.authorId
-    ) {
+    if (post.authorId && post.authorId !== userId && post.authorId !== parentComment?.authorId) {
       this.db.notification
         .create({
           data: {
             recipientId: post.authorId,
             actorId: userId,
             type: 'POST_COMMENT' as any,
-            message: `commented: "${previewText}"`,
+            message: 'commented on your post.',
             entityId: resolvedPostId,
             entityType: 'POST',
           },
@@ -315,12 +292,7 @@ export class CommentsService {
     };
   }
 
-  async updateComment(
-    commentId: string,
-    userId: string,
-    dto: UpdateCommentDto,
-    userRole?: string,
-  ) {
+  async updateComment(commentId: string, userId: string, dto: UpdateCommentDto, userRole?: string) {
     const existing = await this.db.comment.findUnique({
       where: { id: commentId },
     });
@@ -330,9 +302,7 @@ export class CommentsService {
     }
 
     if (existing.authorId !== userId && userRole !== Role.ADMIN) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this comment.',
-      );
+      throw new ForbiddenException('You are not authorized to edit this comment.');
     }
 
     const trimmedContent = dto.content.trim();
@@ -372,10 +342,7 @@ export class CommentsService {
     };
   }
 
-  async deleteComment(
-    commentId: string,
-    currentUser: { id: string; role?: string },
-  ) {
+  async deleteComment(commentId: string, currentUser: { id: string; role?: string }) {
     const existing = await this.db.comment.findUnique({
       where: { id: commentId },
       include: {
@@ -397,9 +364,7 @@ export class CommentsService {
     const isAdmin = currentUser.role === Role.ADMIN;
 
     if (!isCommentAuthor && !isPostAuthor && !isAdmin) {
-      throw new ForbiddenException(
-        'You are not authorized to delete this comment.',
-      );
+      throw new ForbiddenException('You are not authorized to delete this comment.');
     }
 
     const postId = existing.postId;
@@ -415,11 +380,7 @@ export class CommentsService {
     while (added) {
       added = false;
       for (const item of allPostComments) {
-        if (
-          item.parentId &&
-          idsToDelete.has(item.parentId) &&
-          !idsToDelete.has(item.id)
-        ) {
+        if (item.parentId && idsToDelete.has(item.parentId) && !idsToDelete.has(item.id)) {
           idsToDelete.add(item.id);
           added = true;
         }
