@@ -146,6 +146,19 @@ enum ReferralStatus {
   QUALIFIED
 }
 
+enum PointEntryType {
+  EARN
+  REDEEM
+}
+
+enum RedemptionStatus {
+  ACTIVE
+  PENDING
+  FULFILLED
+  EXPIRED
+  REVOKED
+}
+
 enum ShareContentType {
   POST
   DUA

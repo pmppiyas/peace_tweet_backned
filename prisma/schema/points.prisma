@@ -46,22 +46,43 @@ model UserTaskProgress {
 }
 
 model PointTransaction {
-  id          String   @id @default(uuid())
+  id          String         @id @default(uuid())
   userId      String
-  taskCode    String
+  entryType   PointEntryType @default(EARN)
+  taskCode    String?
+  rewardCode  String?
   pointsDelta Int
-  sourceKey   String   @unique
+  sourceKey   String         @unique
   titleBn     String?
   titleEn     String?
   metadata    Json?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime       @default(now())
 
-  user User                @relation("UserPointTransactions", fields: [userId], references: [id], onDelete: Cascade)
-  task PointTaskDefinition @relation("TaskDefinitionTransactions", fields: [taskCode], references: [code], onDelete: Cascade)
+  user User                 @relation("UserPointTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  task PointTaskDefinition? @relation("TaskDefinitionTransactions", fields: [taskCode], references: [code], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([taskCode])
+  @@index([rewardCode])
   @@map("point_transactions")
+}
+
+model UserRedemption {
+  id              String           @id @default(uuid())
+  userId          String
+  rewardCode      String
+  pointsSpent     Int
+  status          RedemptionStatus @default(ACTIVE)
+  deliveryInfo    Json?
+  fulfillmentCode String?
+  expiresAt       DateTime?
+  redeemedAt      DateTime         @default(now())
+
+  user User @relation("UserRedemptions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, rewardCode])
+  @@index([userId, status])
+  @@map("user_redemptions")
 }
 
 model Referral {

@@ -1,4 +1,6 @@
+import { randomUUID } from 'crypto';
 import httpStatus from 'http-status-codes';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
 import AppError from '../../utils/appError';
@@ -10,6 +12,33 @@ import {
   POINT_LEVELS,
   resolveLevelInfo,
 } from './points.constants';
+import { REDEEM_BY_CODE, REDEEM_CATALOG } from './redeem.constants';
+
+const TASK_BY_CODE = new Map(DEFAULT_POINT_TASKS.map((t) => [t.code, t]));
+
+const enrichTransaction = <
+  T extends {
+    entryType?: string;
+    taskCode?: string | null;
+    rewardCode?: string | null;
+    titleBn?: string | null;
+    titleEn?: string | null;
+  },
+>(
+  tx: T,
+) => {
+  const staticDef =
+    tx.entryType === 'REDEEM' && tx.rewardCode
+      ? REDEEM_BY_CODE.get(tx.rewardCode)
+      : tx.taskCode
+        ? TASK_BY_CODE.get(tx.taskCode)
+        : undefined;
+  return {
+    ...tx,
+    titleBn: staticDef?.titleBn ?? tx.titleBn ?? tx.rewardCode ?? tx.taskCode ?? '',
+    titleEn: staticDef?.titleEn ?? tx.titleEn ?? tx.rewardCode ?? tx.taskCode ?? '',
+  };
+};
 
 let tasksSeeded = false;
 let seedingPromise: Promise<void> | null = null;
@@ -39,6 +68,7 @@ export const ensureTaskDefinitionsSeeded = async () => {
               actionRoute: task.actionRoute ?? null,
               icon: task.icon,
               sortOrder: task.sortOrder,
+              isActive: true,
             },
             create: {
               code: task.code,
@@ -55,12 +85,13 @@ export const ensureTaskDefinitionsSeeded = async () => {
               actionRoute: task.actionRoute ?? null,
               icon: task.icon,
               sortOrder: task.sortOrder,
+              isActive: true,
             },
           }),
         ),
       );
       await prisma.pointTaskDefinition.updateMany({
-        where: { code: { in: ['SET_BLOOD_GROUP', 'BLOOD_DONATION_COMPLETE'] } },
+        where: { code: { in: ['BLOOD_DONATION_COMPLETE', 'COMPLETE_PROFILE_100'] } },
         data: { isActive: false },
       });
       tasksSeeded = true;
@@ -128,23 +159,49 @@ const ensureUserReferralCode = async (userId: string, usernameHint?: string): Pr
   return targetUsername;
 };
 
-/** Grant level badge automatically when user crosses milestone lifetime points. */
+/** Grant the user's current level badge and replace older level badges cleanly. */
+const LEVEL_BADGE_NAMES = new Set(POINT_LEVELS.map((l) => l.badgeName));
+
 const syncPointLevelBadges = async (userId: string, lifetimePoints: number) => {
   try {
     const levelInfo = resolveLevelInfo(lifetimePoints);
-    if (levelInfo.current.level < 2) return;
-    const badgeName = levelInfo.current.badgeName;
+    const targetBadgeName = levelInfo.current.badgeName;
+
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { badges: { select: { name: true } } },
+    });
+    if (!current) return;
+
+    const hasTarget = current.badges.some((b) => b.name === targetBadgeName);
+    const staleLevelBadges = current.badges
+      .filter((b) => LEVEL_BADGE_NAMES.has(b.name) && b.name !== targetBadgeName)
+      .map((b) => ({ name: b.name }));
+
+    if (hasTarget && staleLevelBadges.length === 0) return;
+
     await prisma.user.update({
       where: { id: userId },
       data: {
         badges: {
-          connectOrCreate: {
-            where: { name: badgeName },
-            create: { name: badgeName },
-          },
+          ...(!hasTarget
+            ? {
+                connectOrCreate: {
+                  where: { name: targetBadgeName },
+                  create: { name: targetBadgeName },
+                },
+              }
+            : {}),
+          ...(staleLevelBadges.length > 0 ? { disconnect: staleLevelBadges } : {}),
         },
       },
     });
+
+    await Promise.all([
+      cacheService.delPattern(`user:*:${userId}*`).catch(() => {}),
+      cacheService.delPattern(`user:me:${userId}`).catch(() => {}),
+      cacheService.delPattern('user:username:*').catch(() => {}),
+    ]);
   } catch {}
 };
 
@@ -230,15 +287,14 @@ export const awardTaskPoints = async (params: {
             ? nextCompletedCount >= task.maxLimit
             : false;
 
-    // 3. Record ledger transaction
+    // 3. Record lean ledger transaction (static titles resolved in-memory)
     await tx.pointTransaction.create({
       data: {
         userId,
+        entryType: 'EARN',
         taskCode,
         pointsDelta: task.points,
         sourceKey,
-        titleBn: task.titleBn,
-        titleEn: task.titleEn,
         metadata: metadata ? metadata : undefined,
       },
     });
@@ -286,7 +342,7 @@ export const awardTaskPoints = async (params: {
       titleBn: task.titleBn,
       titleEn: task.titleEn,
     };
-  });
+  }, { maxWait: 10000, timeout: 20000 });
 
   if (txResult.awarded) {
     await invalidateUserPointsCache(userId);
@@ -323,6 +379,7 @@ export const syncProfileCompletionTasks = async (userId: string) => {
       city: true,
       state: true,
       country: true,
+      bloodGroup: true,
       referredById: true,
     },
   });
@@ -335,12 +392,14 @@ export const syncProfileCompletionTasks = async (userId: string) => {
   const hasLocation = Boolean(
     user.location?.trim() || user.city?.trim() || user.state?.trim() || user.country?.trim(),
   );
+  const hasBloodGroup = Boolean(user.bloodGroup);
 
   const checks: { ok: boolean; code: string }[] = [
     { ok: hasAvatar, code: 'UPLOAD_AVATAR' },
     { ok: hasCover, code: 'UPLOAD_COVER' },
     { ok: hasBio, code: 'ADD_BIO' },
     { ok: hasLocation, code: 'SET_LOCATION' },
+    { ok: hasBloodGroup, code: 'SET_BLOOD_GROUP' },
     { ok: hasEmailVerified, code: 'VERIFY_EMAIL' },
   ];
 
@@ -354,38 +413,15 @@ export const syncProfileCompletionTasks = async (userId: string) => {
     }
   }
 
-  const profileStepsComplete = hasAvatar && hasCover && hasBio && hasLocation;
-  if (profileStepsComplete) {
-    await awardTaskPoints({
-      userId,
-      taskCode: 'COMPLETE_PROFILE_100',
-      sourceKey: `COMPLETE_PROFILE_100:${userId}`,
-    });
-  }
-
-  // Green verified icon requires mandatory email/Gmail verification + complete profile details
-  if (hasEmailVerified && profileStepsComplete && user.userStatus === 'NON_VERIFIED') {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        userStatus: 'VERIFIED',
-        badges: {
-          connectOrCreate: {
-            where: { name: 'VERIFIED' },
-            create: { name: 'VERIFIED' },
-          },
-        },
-      },
-    });
-    await invalidateUserPointsCache(userId);
-    await cacheService.delPattern('feed:*').catch(() => {});
-    await cacheService.delPattern('posts:*').catch(() => {});
-  } else if (!hasEmailVerified && user.userStatus === 'VERIFIED') {
+  // Green verified icon requires mandatory email verification even if previously verified
+  if (!hasEmailVerified && user.userStatus === 'VERIFIED') {
     await prisma.user.update({
       where: { id: userId },
       data: { userStatus: 'NON_VERIFIED' },
     });
     await invalidateUserPointsCache(userId);
+    await cacheService.delPattern('feed:*').catch(() => {});
+    await cacheService.delPattern('posts:*').catch(() => {});
   }
 
   // Qualify referral bonus if user came from a referral and uploaded avatar or completed a core field
@@ -468,7 +504,7 @@ export const processRegistrationReferral = async (
           registerPointsAwarded: true,
         },
       });
-    });
+    }, { maxWait: 10000, timeout: 20000 });
 
     await awardTaskPoints({
       userId: inviter.id,
@@ -665,6 +701,7 @@ export const getUserPointsDashboard = async (userId: string) => {
   const progressMap = new Map(progressRows.map((p) => [p.taskCode, p]));
 
   const tasks = definitions.map((def) => {
+    const staticTask = TASK_BY_CODE.get(def.code);
     const p = progressMap.get(def.code);
     const todayCount = p && p.lastResetDate === todayKey ? p.todayCount : 0;
     const completedCount = p?.completedCount ?? 0;
@@ -683,17 +720,17 @@ export const getUserPointsDashboard = async (userId: string) => {
     return {
       code: def.code,
       category: def.category,
-      titleBn: def.titleBn,
-      titleEn: def.titleEn,
-      descriptionBn: def.descriptionBn,
-      descriptionEn: def.descriptionEn,
-      points: def.points,
+      titleBn: staticTask?.titleBn ?? def.titleBn,
+      titleEn: staticTask?.titleEn ?? def.titleEn,
+      descriptionBn: staticTask?.descriptionBn ?? def.descriptionBn,
+      descriptionEn: staticTask?.descriptionEn ?? def.descriptionEn,
+      points: staticTask?.points ?? def.points,
       frequency: def.frequency,
       dailyLimit: def.dailyLimit,
       maxLimit: def.maxLimit,
       targetCount: def.targetCount,
-      actionRoute: def.actionRoute,
-      icon: def.icon,
+      actionRoute: staticTask?.actionRoute ?? def.actionRoute,
+      icon: staticTask?.icon ?? def.icon,
       completedCount,
       todayCount,
       currentCount,
@@ -715,10 +752,16 @@ export const getUserPointsDashboard = async (userId: string) => {
       labelEn: 'Location',
     },
     {
+      key: 'bloodGroup',
+      done: Boolean(user.bloodGroup),
+      labelBn: 'রক্তের গ্রুপ',
+      labelEn: 'Blood Group',
+    },
+    {
       key: 'emailVerified',
       done: Boolean(user.emailVerified),
-      labelBn: 'জিমেইল ভেরিফাই (+50)',
-      labelEn: 'Verify Gmail (+50)',
+      labelBn: 'জিমেইল ভেরিফাই (+30)',
+      labelEn: 'Verify Gmail (+30)',
     },
   ];
   const completedSteps = profileChecks.filter((c) => c.done).length;
@@ -757,7 +800,7 @@ export const getUserPointsDashboard = async (userId: string) => {
       steps: profileChecks,
     },
     tasks,
-    recentTransactions: transactions,
+    recentTransactions: transactions.map(enrichTransaction),
   };
 };
 
@@ -783,7 +826,411 @@ export const getPointsHistory = async (userId: string, page = 1, limit = 25) => 
       total,
       totalPages: Math.ceil(total / safeLimit),
     },
+    items: items.map(enrichTransaction),
+  };
+};
+
+export interface RedeemDeliveryInput {
+  recipientName?: string;
+  phone?: string;
+  address?: string;
+  note?: string;
+}
+
+interface RewardEffectHandler {
+  isAlreadyOwned?: (user: {
+    userStatus: string;
+    activeAvatarFrame?: string | null;
+    activeProfileTheme?: string | null;
+  }) => boolean;
+  isEquipped?: (user: {
+    activeAvatarFrame?: string | null;
+    activeProfileTheme?: string | null;
+  }) => boolean;
+  equipField?: 'activeAvatarFrame' | 'activeProfileTheme';
+  applyEffect?: (
+    tx: Prisma.TransactionClient,
+    user: { id: string; badges: { name: string }[] },
+  ) => Promise<void>;
+}
+
+const FRESH_USER_SELECT = {
+  id: true,
+  name: true,
+  username: true,
+  email: true,
+  emailVerified: true,
+  emailVerifiedAt: true,
+  role: true,
+  userStatus: true,
+  activeAvatarFrame: true,
+  activeProfileTheme: true,
+  avatarUrl: true,
+  coverUrl: true,
+  bio: true,
+  country: true,
+  countryCode: true,
+  state: true,
+  city: true,
+  location: true,
+  bloodGroup: true,
+  isDonor: true,
+  donationCount: true,
+  points: true,
+  lifetimePoints: true,
+  referralCode: true,
+  currentStreak: true,
+  badges: { select: { id: true, name: true } },
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const invalidateAllUserPresentationCaches = async (userId: string) => {
+  await Promise.all([
+    invalidateUserPointsCache(userId),
+    cacheService.delPattern(`user:*:${userId}*`).catch(() => {}),
+    cacheService.delPattern(`user:me:${userId}`).catch(() => {}),
+    cacheService.delPattern('user:username:*').catch(() => {}),
+    cacheService.delPattern('feed:*').catch(() => {}),
+    cacheService.delPattern('posts:*').catch(() => {}),
+  ]);
+};
+
+const REDEEM_HANDLERS: Record<string, RewardEffectHandler> = {
+  GREEN_VERIFIED_BADGE: {
+    isAlreadyOwned: (user) =>
+      user.userStatus === 'VERIFIED' || user.userStatus === 'PREMIUM',
+    applyEffect: async (tx, user) => {
+      const hasNonVerifiedBadge = user.badges.some(
+        (b) => b.name === 'NON VERIFIED',
+      );
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          userStatus: 'VERIFIED',
+          badges: {
+            connectOrCreate: {
+              where: { name: 'VERIFIED' },
+              create: { name: 'VERIFIED' },
+            },
+            ...(hasNonVerifiedBadge
+              ? { disconnect: [{ name: 'NON VERIFIED' }] }
+              : {}),
+          },
+        },
+      });
+    },
+  },
+  EMERALD_AVATAR_FRAME: {
+    equipField: 'activeAvatarFrame',
+    isAlreadyOwned: (user) => user.activeAvatarFrame === 'EMERALD_AVATAR_FRAME',
+    isEquipped: (user) => user.activeAvatarFrame === 'EMERALD_AVATAR_FRAME',
+    applyEffect: async (tx, user) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { activeAvatarFrame: 'EMERALD_AVATAR_FRAME' },
+      });
+    },
+  },
+  NOOR_PROFILE_THEME: {
+    equipField: 'activeProfileTheme',
+    isAlreadyOwned: (user) => user.activeProfileTheme === 'NOOR_PROFILE_THEME',
+    isEquipped: (user) => user.activeProfileTheme === 'NOOR_PROFILE_THEME',
+    applyEffect: async (tx, user) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { activeProfileTheme: 'NOOR_PROFILE_THEME' },
+      });
+    },
+  },
+};
+
+export const getRedeemStore = async (userId: string) => {
+  const [user, redemptions] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        avatarUrl: true,
+        emailVerified: true,
+        userStatus: true,
+        activeAvatarFrame: true,
+        activeProfileTheme: true,
+        points: true,
+        lifetimePoints: true,
+      },
+    }),
+    prisma.userRedemption.findMany({
+      where: { userId },
+      orderBy: { redeemedAt: 'desc' },
+    }),
+  ]);
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const redemptionsByCode = new Map<string, typeof redemptions>();
+  for (const r of redemptions) {
+    const list = redemptionsByCode.get(r.rewardCode) || [];
+    list.push(r);
+    redemptionsByCode.set(r.rewardCode, list);
+  }
+
+  const items = REDEEM_CATALOG.filter((item) => item.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((item) => {
+      const records = redemptionsByCode.get(item.code) || [];
+      const activeRecord = records.find(
+        (r) =>
+          r.status === 'ACTIVE' ||
+          r.status === 'PENDING' ||
+          r.status === 'FULFILLED',
+      );
+      const handler = REDEEM_HANDLERS[item.code];
+      const ownedByHandler = handler?.isAlreadyOwned?.(user) ?? false;
+      const isRedeemed = !item.isRepeatable
+        ? Boolean(activeRecord) || ownedByHandler
+        : false;
+      const isEquipped = handler?.isEquipped?.(user) ?? false;
+      const missingEmailVerification =
+        item.requiresEmailVerified && !user.emailVerified;
+      const pointsNeeded = Math.max(0, item.costPoints - user.points);
+      const canRedeem =
+        !item.comingSoon &&
+        !isRedeemed &&
+        !missingEmailVerification &&
+        pointsNeeded === 0;
+
+      return {
+        ...item,
+        isRedeemed,
+        isEquipped,
+        redeemCount: records.filter((r) => r.status !== 'REVOKED').length,
+        redeemedAt: activeRecord?.redeemedAt ?? records[0]?.redeemedAt ?? null,
+        missingEmailVerification,
+        pointsNeeded,
+        canRedeem,
+      };
+    });
+
+  return {
+    points: user.points,
+    lifetimePoints: user.lifetimePoints,
+    emailVerified: Boolean(user.emailVerified),
+    userStatus: user.userStatus,
+    activeAvatarFrame: user.activeAvatarFrame,
+    activeProfileTheme: user.activeProfileTheme,
     items,
+    redemptions: redemptions.map((r) => {
+      const def = REDEEM_BY_CODE.get(r.rewardCode);
+      return {
+        ...r,
+        category: def?.category ?? 'BADGE',
+        fulfillmentType: def?.fulfillmentType ?? 'INSTANT_BADGE',
+        titleBn: def?.titleBn ?? r.rewardCode,
+        titleEn: def?.titleEn ?? r.rewardCode,
+      };
+    }),
+  };
+};
+
+export const redeemReward = async (
+  userId: string,
+  rawRewardCode: string,
+  deliveryInput?: RedeemDeliveryInput,
+) => {
+  const rewardCode = (rawRewardCode || '').trim().toUpperCase();
+  const reward = REDEEM_BY_CODE.get(rewardCode);
+  if (!reward || !reward.isActive) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Reward item not found.');
+  }
+  if (reward.comingSoon) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This reward is coming soon and cannot be redeemed yet.',
+    );
+  }
+
+  let sanitizedDelivery: Record<string, string> | undefined;
+  if (reward.requiresDeliveryInfo) {
+    const recipientName = deliveryInput?.recipientName?.trim() || '';
+    const phone = deliveryInput?.phone?.trim() || '';
+    const address = deliveryInput?.address?.trim() || '';
+    const note = deliveryInput?.note?.trim() || '';
+    if (!recipientName || !phone || !address) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Recipient name, phone number, and delivery address are required for external gifts.',
+      );
+    }
+    sanitizedDelivery = {
+      recipientName,
+      phone,
+      address,
+      ...(note ? { note } : {}),
+    };
+  }
+
+  const handler = REDEEM_HANDLERS[reward.code];
+  const redemptionId = randomUUID();
+  const expiresAt =
+    reward.durationDays && reward.durationDays > 0
+      ? new Date(Date.now() + reward.durationDays * 86_400_000)
+      : null;
+  const initialStatus =
+    reward.fulfillmentType === 'EXTERNAL_DELIVERY' ? 'PENDING' : 'ACTIVE';
+
+  const redemption = await prisma.$transaction(
+    async (tx) => {
+      const [user, existing] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            username: true,
+            emailVerified: true,
+            userStatus: true,
+            activeAvatarFrame: true,
+            activeProfileTheme: true,
+            points: true,
+            badges: { select: { name: true } },
+          },
+        }),
+        !reward.isRepeatable
+          ? tx.userRedemption.findFirst({
+              where: {
+                userId,
+                rewardCode: reward.code,
+                status: { in: ['ACTIVE', 'PENDING', 'FULFILLED'] },
+              },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, 'User not found.');
+      }
+
+      if (reward.requiresEmailVerified && !user.emailVerified) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'Gmail verification is mandatory before redeeming this reward.',
+        );
+      }
+
+      if (!reward.isRepeatable && (existing || handler?.isAlreadyOwned?.(user))) {
+        throw new AppError(
+          httpStatus.CONFLICT,
+          'You have already redeemed this reward.',
+        );
+      }
+
+      const deducted = await tx.user.updateMany({
+        where: {
+          id: userId,
+          points: { gte: reward.costPoints },
+          ...(reward.requiresEmailVerified ? { emailVerified: true } : {}),
+        },
+        data: {
+          points: { decrement: reward.costPoints },
+        },
+      });
+
+      if (deducted.count === 0) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Insufficient points. You need ${reward.costPoints} pts.`,
+        );
+      }
+
+      const [, createdRedemption] = await Promise.all([
+        handler?.applyEffect ? handler.applyEffect(tx, user) : Promise.resolve(),
+        tx.userRedemption.create({
+          data: {
+            id: redemptionId,
+            userId,
+            rewardCode: reward.code,
+            pointsSpent: reward.costPoints,
+            status: initialStatus,
+            ...(sanitizedDelivery ? { deliveryInfo: sanitizedDelivery } : {}),
+            ...(expiresAt ? { expiresAt } : {}),
+          },
+        }),
+        tx.pointTransaction.create({
+          data: {
+            userId,
+            entryType: 'REDEEM',
+            rewardCode: reward.code,
+            pointsDelta: -reward.costPoints,
+            sourceKey: `REDEEM:${reward.code}:${userId}:${redemptionId}`,
+          },
+        }),
+      ]);
+
+      return createdRedemption;
+    },
+    { maxWait: 10000, timeout: 20000 },
+  );
+
+  const [freshUser] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: FRESH_USER_SELECT,
+    }),
+    invalidateAllUserPresentationCaches(userId),
+  ]);
+
+  return {
+    redeemed: true,
+    rewardCode: reward.code,
+    pointsSpent: reward.costPoints,
+    titleBn: reward.titleBn,
+    titleEn: reward.titleEn,
+    redemption,
+    user: freshUser,
+  };
+};
+
+export const toggleEquipCosmetic = async (
+  userId: string,
+  rawRewardCode: string,
+  equip = true,
+) => {
+  const rewardCode = (rawRewardCode || '').trim().toUpperCase();
+  const reward = REDEEM_BY_CODE.get(rewardCode);
+  const handler = REDEEM_HANDLERS[rewardCode];
+  if (!reward || !handler?.equipField) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'This item cannot be equipped.');
+  }
+
+  const owned = await prisma.userRedemption.findFirst({
+    where: {
+      userId,
+      rewardCode,
+      status: { in: ['ACTIVE', 'FULFILLED'] },
+    },
+  });
+  if (!owned) {
+    throw new AppError(httpStatus.FORBIDDEN, 'You have not unlocked this cosmetic yet.');
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      [handler.equipField]: equip ? rewardCode : null,
+    },
+    select: FRESH_USER_SELECT,
+  });
+
+  await invalidateAllUserPresentationCaches(userId);
+
+  return {
+    rewardCode,
+    equipped: equip,
+    user: updatedUser,
   };
 };
 
@@ -828,5 +1275,8 @@ export const pointsServices = {
   dailyCheckIn,
   getUserPointsDashboard,
   getPointsHistory,
+  getRedeemStore,
+  redeemReward,
+  toggleEquipCosmetic,
   getLeaderboard,
 };

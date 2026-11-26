@@ -56,6 +56,7 @@ const update = async (id: string, dto: IUpdateUserInput) => {
     dto.city !== undefined ||
     dto.state !== undefined ||
     dto.country !== undefined ||
+    dto.bloodGroup !== undefined ||
     dto.email !== undefined;
 
   if (affectsPoints) {

@@ -48,6 +48,8 @@ export interface IUserProfile {
   emailVerifiedAt?: Date | null;
   role: Role;
   userStatus?: UserStatus;
+  activeAvatarFrame?: string | null;
+  activeProfileTheme?: string | null;
   avatarUrl?: string | null;
   coverUrl?: string | null;
   bio?: string | null;

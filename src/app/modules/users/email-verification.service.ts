@@ -143,12 +143,12 @@ const dispatchVerificationEmail = async (params: {
   code: string;
 }): Promise<'resend' | 'smtp' | 'dev'> => {
   const { to, name, code } = params;
-  const subject = 'PeaceTweet — Verify your email (+50 Points)';
-  const text = `Assalamu Alaikum ${name || 'Member'},\n\nYour PeaceTweet email verification code is: ${code}\n\nThis code expires in 10 minutes. Completing verification awards +50 points and unlocks eligibility for the green verified icon.\n\nIf you did not request this, you can safely ignore this message.`;
+  const subject = 'PeaceTweet — Verify your email (+30 Points)';
+  const text = `Assalamu Alaikum ${name || 'Member'},\n\nYour PeaceTweet email verification code is: ${code}\n\nThis code expires in 10 minutes. Completing verification awards +30 points and unlocks eligibility for the green verified icon.\n\nIf you did not request this, you can safely ignore this message.`;
   const html = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:20px;border:1px solid #e4e6eb;border-radius:12px;">
     <h2 style="color:#059669;margin-top:0;">PeaceTweet Email Verification</h2>
     <p>Assalamu Alaikum <strong>${name || 'Member'}</strong>,</p>
-    <p>Use the verification code below to verify your email address, earn <strong>+50 points</strong>, and qualify for the <strong>Green Verified Icon</strong>:</p>
+    <p>Use the verification code below to verify your email address, earn <strong>+30 points</strong>, and qualify for the <strong>Green Verified Icon</strong>:</p>
     <div style="font-size:28px;font-weight:800;letter-spacing:6px;text-align:center;padding:14px 20px;background:#ecfdf5;color:#047857;border-radius:10px;margin:18px 0;">${code}</div>
     <p style="font-size:13px;color:#65676b;">This code expires in 10 minutes.</p>
   </div>`;

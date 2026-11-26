@@ -57,9 +57,58 @@ const getLeaderboard = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getRedeemStore = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const userId = req.user?.id || req.user?.sub;
+  const result = await pointsServices.getRedeemStore(userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Redeem catalog retrieved successfully',
+    data: result,
+  });
+});
+
+const redeemReward = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const userId = req.user?.id || req.user?.sub;
+  const result = await pointsServices.redeemReward(
+    userId,
+    req.body?.code || req.body?.rewardCode,
+    req.body?.deliveryInfo,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Reward redeemed successfully',
+    data: result,
+  });
+});
+
+const toggleEquipCosmetic = catchAsync(
+  async (req: Request & { user?: any }, res: Response) => {
+    const userId = req.user?.id || req.user?.sub;
+    const result = await pointsServices.toggleEquipCosmetic(
+      userId,
+      req.body?.code || req.body?.rewardCode,
+      req.body?.equip !== false,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Cosmetic appearance updated',
+      data: result,
+    });
+  },
+);
+
 export const pointsController = {
   getMyPointsDashboard,
   getMyPointsHistory,
   checkIn,
+  getRedeemStore,
+  redeemReward,
+  toggleEquipCosmetic,
   getLeaderboard,
 };
