@@ -3,6 +3,7 @@ import httpStatus from 'http-status-codes';
 import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
 import { usersServices } from './users.services';
+import { emailVerificationService } from './email-verification.service';
 
 const getProfile = catchAsync(async (req: Request & { user?: any }, res: Response) => {
   const result = await usersServices.findById(req.user.id);
@@ -44,9 +45,53 @@ const getByUsername = catchAsync(async (req: Request & { user?: any }, res: Resp
   });
 });
 
+const sendEmailVerification = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const result = await emailVerificationService.sendEmailVerificationCode(
+    req.user.id,
+    req.body?.email,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result.alreadyVerified
+      ? 'Email is already verified.'
+      : 'Verification code sent successfully.',
+    data: result,
+  });
+});
+
+const confirmEmailVerification = catchAsync(
+  async (req: Request & { user?: any }, res: Response) => {
+    const result = await emailVerificationService.confirmEmailVerificationCode(
+      req.user.id,
+      req.body.code,
+      req.body?.email,
+    );
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Email verified successfully!',
+      data: result,
+    });
+  },
+);
+
+const verifyEmailWithGoogle = catchAsync(async (req: Request & { user?: any }, res: Response) => {
+  const result = await emailVerificationService.verifyEmailWithGoogle(req.user.id, req.body);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Gmail verified successfully!',
+    data: result,
+  });
+});
+
 export const usersController = {
   getProfile,
   updateProfile,
   changePassword,
   getByUsername,
+  sendEmailVerification,
+  confirmEmailVerification,
+  verifyEmailWithGoogle,
 };

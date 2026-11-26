@@ -12,6 +12,7 @@ import { kafkaProducerService } from '../../config/kafka';
 import { KAFKA_TOPIC_POST_CREATED } from '../../../kafka/events/post-created.event';
 
 import { commentsServices } from '../comments/comments.services';
+import { pointsServices } from '../points/points.services';
 
 const serviceInstance = new PostsService(prisma as any);
 
@@ -39,6 +40,21 @@ const invalidatePostCache = async (postId?: string) => {
 const create = async (dto: ICreatePostInput, authorId: string) => {
   const result = await serviceInstance.create(dto as any, authorId);
   await invalidatePostCache(result?.id);
+
+  // Award post creation points & qualify pending referral silently
+  try {
+    if (result?.id) {
+      await pointsServices.awardTaskPoints({
+        userId: authorId,
+        taskCode: 'CREATE_POST',
+        sourceKey: `CREATE_POST:${result.id}`,
+        metadata: { postId: result.id, type: result.type },
+      });
+      await pointsServices.qualifyReferralIfPending(authorId);
+    }
+  } catch (err: any) {
+    console.warn('Points notice on post create:', err?.message);
+  }
 
   // Publish to Kafka message broker for asynchronous processing & event streaming
   try {
@@ -94,6 +110,14 @@ const savePost = async (postId: string, userId: string, timeSlot?: string) => {
   try {
     await cacheService.delPattern(`bookmarks:${userId}:*`);
   } catch {}
+  try {
+    await pointsServices.awardTaskPoints({
+      userId,
+      taskCode: 'SAVE_BOOKMARK',
+      sourceKey: `SAVE_BOOKMARK:${userId}:POST:${postId}`,
+      metadata: { postId },
+    });
+  } catch {}
   return result;
 };
 
@@ -109,6 +133,20 @@ const unsavePost = async (postId: string, userId: string) => {
 const react = async (postId: string, userId: string) => {
   const result = await serviceInstance.react(postId, userId);
   await invalidatePostCache(postId);
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { authorId: true },
+    });
+    if (post && post.authorId !== userId) {
+      await pointsServices.awardTaskPoints({
+        userId,
+        taskCode: 'REACT_POST',
+        sourceKey: `REACT_POST:${userId}:${postId}`,
+        metadata: { postId },
+      });
+    }
+  } catch {}
   return result;
 };
 

@@ -1,0 +1,83 @@
+model PointTaskDefinition {
+  id            String             @id @default(uuid())
+  code          String             @unique
+  category      PointTaskCategory
+  titleBn       String
+  titleEn       String
+  descriptionBn String?
+  descriptionEn String?
+  points        Int
+  frequency     PointTaskFrequency
+  dailyLimit    Int?
+  maxLimit      Int?
+  targetCount   Int                @default(1)
+  actionRoute   String?
+  icon          String?
+  sortOrder     Int                @default(0)
+  isActive      Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  userProgress UserTaskProgress[]  @relation("TaskDefinitionProgress")
+  transactions PointTransaction[]  @relation("TaskDefinitionTransactions")
+
+  @@index([category, isActive])
+  @@map("point_task_definitions")
+}
+
+model UserTaskProgress {
+  id              String              @id @default(uuid())
+  userId          String
+  taskCode        String
+  completedCount  Int                 @default(0)
+  todayCount      Int                 @default(0)
+  lastResetDate   String?
+  lastCompletedAt DateTime?
+  isCompleted     Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user User                @relation("UserTaskProgress", fields: [userId], references: [id], onDelete: Cascade)
+  task PointTaskDefinition @relation("TaskDefinitionProgress", fields: [taskCode], references: [code], onDelete: Cascade)
+
+  @@unique([userId, taskCode])
+  @@index([userId, isCompleted])
+  @@map("user_task_progress")
+}
+
+model PointTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  taskCode    String
+  pointsDelta Int
+  sourceKey   String   @unique
+  titleBn     String?
+  titleEn     String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user User                @relation("UserPointTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  task PointTaskDefinition @relation("TaskDefinitionTransactions", fields: [taskCode], references: [code], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([taskCode])
+  @@map("point_transactions")
+}
+
+model Referral {
+  id                    String         @id @default(uuid())
+  inviterId             String
+  inviteeId             String         @unique
+  referralCode          String
+  status                ReferralStatus @default(REGISTERED)
+  registerPointsAwarded Boolean        @default(true)
+  qualifiedBonusAwarded Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  qualifiedAt           DateTime?
+
+  inviter User @relation("ReferralsSent", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User @relation("ReferralReceived", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@index([inviterId, status])
+  @@map("referrals")
+}

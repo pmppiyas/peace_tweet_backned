@@ -27,6 +27,8 @@ export class UsersService {
         name: true,
         username: true,
         email: true,
+        emailVerified: true,
+        emailVerifiedAt: true,
         role: true,
         avatarUrl: true,
         coverUrl: true,
@@ -46,6 +48,10 @@ export class UsersService {
         userStatus: true,
         isDonor: true,
         donationCount: true,
+        points: true,
+        lifetimePoints: true,
+        referralCode: true,
+        currentStreak: true,
         passwordHash: true,
         needPasswordUpdate: true,
         createdAt: true,
@@ -74,6 +80,8 @@ export class UsersService {
         name: true,
         username: true,
         email: true,
+        emailVerified: true,
+        emailVerifiedAt: true,
         role: true,
         avatarUrl: true,
         coverUrl: true,
@@ -93,6 +101,8 @@ export class UsersService {
         userStatus: true,
         isDonor: true,
         donationCount: true,
+        points: true,
+        lifetimePoints: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -112,7 +122,21 @@ export class UsersService {
 
   // Update user profile details
   async update(id: string, dto: UpdateUserDto): Promise<UserDto> {
-    const previousUser = await this.findById(id);
+    const needsPhotoCheck = dto.avatarUrl !== undefined || dto.coverUrl !== undefined;
+    const needsIdentityCheck =
+      needsPhotoCheck || dto.email !== undefined || dto.userStatus !== undefined;
+    const previousUser = needsIdentityCheck
+      ? await this.prisma.user.findUnique({
+          where: { id },
+          select: {
+            avatarUrl: true,
+            coverUrl: true,
+            email: true,
+            emailVerified: true,
+            userStatus: true,
+          },
+        })
+      : null;
 
     const updateData: Record<string, unknown> = {};
 
@@ -155,6 +179,13 @@ export class UsersService {
       }
 
       updateData.email = normalizedEmail;
+      if (previousUser && normalizedEmail !== previousUser.email.toLowerCase()) {
+        updateData.emailVerified = false;
+        updateData.emailVerifiedAt = null;
+        if (previousUser.userStatus === 'VERIFIED') {
+          updateData.userStatus = 'NON_VERIFIED';
+        }
+      }
     }
 
     if (dto.avatarUrl !== undefined) {
@@ -207,6 +238,13 @@ export class UsersService {
     }
 
     if (dto.userStatus !== undefined) {
+      const emailWasReset = updateData.emailVerified === false;
+      const effectiveEmailVerified = !emailWasReset && Boolean(previousUser?.emailVerified);
+      if (dto.userStatus === 'VERIFIED' && !effectiveEmailVerified) {
+        throw new BadRequestException(
+          'Email/Gmail verification is mandatory before obtaining Verified status.',
+        );
+      }
       updateData.userStatus = dto.userStatus;
     }
 
@@ -226,6 +264,8 @@ export class UsersService {
         name: true,
         username: true,
         email: true,
+        emailVerified: true,
+        emailVerifiedAt: true,
         role: true,
         avatarUrl: true,
         coverUrl: true,
@@ -245,6 +285,10 @@ export class UsersService {
         userStatus: true,
         isDonor: true,
         donationCount: true,
+        points: true,
+        lifetimePoints: true,
+        referralCode: true,
+        currentStreak: true,
         passwordHash: true,
         needPasswordUpdate: true,
         createdAt: true,
@@ -255,7 +299,7 @@ export class UsersService {
     // Automatically create a public feed post when profile picture or cover photo is updated
     try {
       const nextAvatar = dto.avatarUrl !== undefined ? dto.avatarUrl?.trim() || null : undefined;
-      if (nextAvatar && nextAvatar !== previousUser.avatarUrl) {
+      if (nextAvatar && nextAvatar !== previousUser?.avatarUrl) {
         await (this.prisma as any).post.create({
           data: {
             authorId: id,
@@ -270,7 +314,7 @@ export class UsersService {
       }
 
       const nextCover = dto.coverUrl !== undefined ? dto.coverUrl?.trim() || null : undefined;
-      if (nextCover && nextCover !== previousUser.coverUrl) {
+      if (nextCover && nextCover !== previousUser?.coverUrl) {
         await (this.prisma as any).post.create({
           data: {
             authorId: id,

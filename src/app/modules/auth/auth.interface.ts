@@ -1,4 +1,4 @@
-import { BloodGroup, Role } from '@prisma/client';
+import { BloodGroup, Role, UserStatus } from '@prisma/client';
 
 export interface IRegisterInput {
   name: string;
@@ -12,6 +12,8 @@ export interface IRegisterInput {
   city?: string;
   location?: string;
   bloodGroup?: BloodGroup;
+  invitedBy?: string;
+  referralCode?: string;
 }
 
 export interface ILoginInput {
@@ -42,7 +44,10 @@ export interface IUserProfile {
   name: string;
   username: string;
   email: string;
+  emailVerified?: boolean;
+  emailVerifiedAt?: Date | null;
   role: Role;
+  userStatus?: UserStatus;
   avatarUrl?: string | null;
   coverUrl?: string | null;
   bio?: string | null;
@@ -55,6 +60,10 @@ export interface IUserProfile {
   badges?: { id: string; name: string }[];
   isDonor?: boolean;
   donationCount?: number;
+  points?: number;
+  lifetimePoints?: number;
+  referralCode?: string | null;
+  currentStreak?: number;
   hasPassword?: boolean;
   needPasswordUpdate?: boolean;
   createdAt: Date;

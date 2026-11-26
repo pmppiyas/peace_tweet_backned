@@ -32,3 +32,19 @@ export const changePasswordZodSchema = z.object({
     .min(6, 'New password must be at least 6 characters long')
     .max(50, 'New password cannot exceed 50 characters'),
 });
+
+export const sendEmailVerificationZodSchema = z.object({
+  email: z.string().email('Invalid email address').optional(),
+});
+
+export const confirmEmailVerificationZodSchema = z.object({
+  code: z.string().regex(/^\d{6}$/, 'Verification code must be 6 digits'),
+  email: z.string().email('Invalid email address').optional(),
+});
+
+export const verifyEmailWithGoogleZodSchema = z.object({
+  accessToken: z.string().optional(),
+  idToken: z.string().optional(),
+  code: z.string().optional(),
+  redirectUri: z.string().optional(),
+});

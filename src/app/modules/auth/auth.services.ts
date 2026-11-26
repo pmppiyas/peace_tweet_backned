@@ -7,6 +7,7 @@ import { cacheService } from '../../config/cache';
 import { generateToken } from '../../helper/jwtTokenGen';
 import { verifyToken } from '../../helper/verifyToken';
 import AppError from '../../utils/appError';
+import { pointsServices } from '../points/points.services';
 import {
   IAuthResponse,
   IFacebookLoginInput,
@@ -119,7 +120,10 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
       name: true,
       username: true,
       email: true,
+      emailVerified: true,
+      emailVerifiedAt: true,
       role: true,
+      userStatus: true,
       avatarUrl: true,
       coverUrl: true,
       bio: true,
@@ -140,6 +144,17 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
     },
   });
 
+  const inviteInput = dto.invitedBy || dto.referralCode;
+  if (inviteInput) {
+    await pointsServices.processRegistrationReferral(user.id, inviteInput);
+  }
+  await pointsServices.syncProfileCompletionTasks(user.id).catch(() => {});
+  const generatedRefCode = await pointsServices.ensureUserReferralCode(user.id, user.username).catch(() => null);
+  const freshPoints = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { points: true, lifetimePoints: true, referralCode: true, currentStreak: true },
+  });
+
   const tokens = createAuthTokens(user.id, user.email, user.username, user.role);
   await updateRefreshTokenHash(user.id, tokens.refreshToken);
 
@@ -149,6 +164,10 @@ const register = async (dto: IRegisterInput): Promise<IAuthResponse> => {
     user: {
       ...user,
       badges: user.badges || [],
+      points: freshPoints?.points ?? 0,
+      lifetimePoints: freshPoints?.lifetimePoints ?? 0,
+      referralCode: freshPoints?.referralCode ?? generatedRefCode,
+      currentStreak: freshPoints?.currentStreak ?? 0,
       hasPassword: true,
       needPasswordUpdate: false,
     },
@@ -193,7 +212,10 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
     name: user.name,
     username: user.username,
     email: user.email,
+    emailVerified: Boolean(user.emailVerified),
+    emailVerifiedAt: user.emailVerifiedAt,
     role: user.role,
+    userStatus: user.userStatus,
     avatarUrl: user.avatarUrl,
     coverUrl: user.coverUrl,
     bio: user.bio,
@@ -206,6 +228,10 @@ const login = async (dto: ILoginInput): Promise<IAuthResponse> => {
     badges: user.badges || [],
     isDonor: user.isDonor,
     donationCount: user.donationCount,
+    points: user.points,
+    lifetimePoints: user.lifetimePoints,
+    referralCode: user.referralCode,
+    currentStreak: user.currentStreak,
     hasPassword: true,
     needPasswordUpdate: user.needPasswordUpdate ?? false,
     createdAt: user.createdAt,
@@ -267,7 +293,10 @@ const getMe = async (userId: string): Promise<IUserProfile> => {
         name: true,
         username: true,
         email: true,
+        emailVerified: true,
+        emailVerifiedAt: true,
         role: true,
+        userStatus: true,
         avatarUrl: true,
         coverUrl: true,
         bio: true,
@@ -279,6 +308,10 @@ const getMe = async (userId: string): Promise<IUserProfile> => {
         bloodGroup: true,
         isDonor: true,
         donationCount: true,
+        points: true,
+        lifetimePoints: true,
+        referralCode: true,
+        currentStreak: true,
         passwordHash: true,
         needPasswordUpdate: true,
         createdAt: true,
@@ -465,7 +498,10 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
     name: user.name,
     username: user.username,
     email: user.email,
+    emailVerified: Boolean(user.emailVerified),
+    emailVerifiedAt: user.emailVerifiedAt,
     role: user.role,
+    userStatus: user.userStatus,
     avatarUrl: user.avatarUrl,
     coverUrl: user.coverUrl,
     bio: user.bio,
@@ -478,6 +514,10 @@ const facebookLogin = async (dto: IFacebookLoginInput): Promise<IAuthResponse> =
     badges: user.badges || [],
     isDonor: user.isDonor,
     donationCount: user.donationCount,
+    points: user.points,
+    lifetimePoints: user.lifetimePoints,
+    referralCode: user.referralCode,
+    currentStreak: user.currentStreak,
     hasPassword: Boolean(user.passwordHash),
     needPasswordUpdate: user.needPasswordUpdate ?? !user.passwordHash,
     createdAt: user.createdAt,
@@ -595,7 +635,7 @@ const verifyGoogleToken = async (
   throw new AppError(httpStatus.UNAUTHORIZED, 'Could not retrieve Google profile or verify token.');
 };
 
-const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
+const resolveGoogleProfile = async (dto: IGoogleLoginInput): Promise<IGoogleProfile> => {
   let accessToken = dto.accessToken;
   let idToken = dto.idToken;
 
@@ -612,7 +652,11 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
     );
   }
 
-  const googleProfile = await verifyGoogleToken(accessToken, idToken);
+  return verifyGoogleToken(accessToken, idToken);
+};
+
+const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
+  const googleProfile = await resolveGoogleProfile(dto);
 
   // 1. Look up by googleId first
   let user = await prisma.user.findUnique({
@@ -642,11 +686,17 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
     });
 
     if (user) {
+      const canMarkVerified =
+        Boolean(googleProfile.email_verified) &&
+        googleProfile.email.toLowerCase().trim() === user.email.toLowerCase().trim();
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
           googleId: googleProfile.sub,
           avatarUrl: user.avatarUrl || googleProfile.picture || null,
+          ...(canMarkVerified && !user.emailVerified
+            ? { emailVerified: true, emailVerifiedAt: new Date() }
+            : {}),
         },
         include: {
           badges: {
@@ -665,6 +715,7 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
     const email = googleProfile.email
       ? googleProfile.email.toLowerCase().trim()
       : `google_${googleProfile.sub}@social.placeholder`;
+    const isRealVerifiedEmail = Boolean(googleProfile.email && googleProfile.email_verified);
 
     const resolvedUsername = await resolveUsername(googleProfile.name || 'member');
 
@@ -673,6 +724,8 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
         name: googleProfile.name || 'PeaceTweet Member',
         username: resolvedUsername,
         email,
+        emailVerified: isRealVerifiedEmail,
+        emailVerifiedAt: isRealVerifiedEmail ? new Date() : null,
         passwordHash: null,
         needPasswordUpdate: true,
         googleId: googleProfile.sub,
@@ -695,6 +748,36 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
         },
       },
     });
+  } else if (
+    googleProfile.email &&
+    googleProfile.email_verified &&
+    !user.emailVerified &&
+    googleProfile.email.toLowerCase().trim() === user.email.toLowerCase().trim()
+  ) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true, emailVerifiedAt: new Date() },
+      include: {
+        badges: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+  }
+
+  if (user.emailVerified) {
+    await pointsServices.syncProfileCompletionTasks(user.id).catch(() => {});
+    const refreshed = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        badges: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+    if (refreshed) {
+      user = refreshed;
+    }
   }
 
   const userProfile: IUserProfile = {
@@ -702,7 +785,10 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
     name: user.name,
     username: user.username,
     email: user.email,
+    emailVerified: Boolean(user.emailVerified),
+    emailVerifiedAt: user.emailVerifiedAt,
     role: user.role,
+    userStatus: user.userStatus,
     avatarUrl: user.avatarUrl,
     coverUrl: user.coverUrl,
     bio: user.bio,
@@ -715,6 +801,10 @@ const googleLogin = async (dto: IGoogleLoginInput): Promise<IAuthResponse> => {
     badges: user.badges || [],
     isDonor: user.isDonor,
     donationCount: user.donationCount,
+    points: user.points,
+    lifetimePoints: user.lifetimePoints,
+    referralCode: user.referralCode,
+    currentStreak: user.currentStreak,
     hasPassword: Boolean(user.passwordHash),
     needPasswordUpdate: user.needPasswordUpdate ?? !user.passwordHash,
     createdAt: user.createdAt,
@@ -736,6 +826,7 @@ export const authServices = {
   login,
   facebookLogin,
   googleLogin,
+  resolveGoogleProfile,
   refreshTokens,
   logout,
   getMe,

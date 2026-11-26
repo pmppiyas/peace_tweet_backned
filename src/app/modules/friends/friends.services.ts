@@ -2,6 +2,7 @@ import { FriendsService } from '../../../modules/friends/friends.service';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
 import { IFriendQuery } from './friends.interface';
+import { pointsServices } from '../points/points.services';
 
 const serviceInstance = new FriendsService(prisma as any);
 
@@ -27,8 +28,39 @@ const cancelRequest = async (requestId: string, userId: string) => {
 };
 
 const acceptRequest = async (requestId: string, userId: string) => {
+  const friendshipBefore = await prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { id: requestId },
+        { receiverId: userId, senderId: requestId, status: 'PENDING' },
+      ],
+    },
+    select: { id: true, senderId: true, receiverId: true, status: true },
+  });
+
   const result = await serviceInstance.acceptRequest(requestId, userId);
   await invalidateFriendsCache();
+
+  try {
+    if (friendshipBefore && friendshipBefore.status === 'PENDING') {
+      const participants = [friendshipBefore.senderId, friendshipBefore.receiverId];
+      await Promise.all(
+        participants.map(async (uid) => {
+          await pointsServices.awardTaskPoints({
+            userId: uid,
+            taskCode: 'MAKE_FRIEND',
+            sourceKey: `MAKE_FRIEND:${friendshipBefore.id}:${uid}`,
+            metadata: { friendshipId: friendshipBefore.id },
+          });
+          await pointsServices.syncFriendMilestones(uid);
+          await pointsServices.qualifyReferralIfPending(uid);
+        }),
+      );
+    }
+  } catch (err: any) {
+    console.warn('Points notice on accept friend:', err?.message);
+  }
+
   return result;
 };
 

@@ -2,6 +2,7 @@ import { BookmarksService } from '../../../modules/bookmarks/bookmarks.service';
 import { PostsService } from '../../../modules/posts/posts.service';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
+import { pointsServices } from '../points/points.services';
 import { IBookmarkQuery } from './bookmarks.interface';
 
 const serviceInstance = new BookmarksService(prisma as any);
@@ -14,6 +15,14 @@ const saveDua = async (userId: string, duaId: string, timeSlot?: string) => {
   } catch (err: any) {
     console.warn('Bookmarks cache invalidation failed:', err.message);
   }
+  try {
+    await pointsServices.awardTaskPoints({
+      userId,
+      taskCode: 'SAVE_BOOKMARK',
+      sourceKey: `SAVE_BOOKMARK:${userId}:DUA:${duaId}`,
+      metadata: { duaId },
+    });
+  } catch {}
   return result;
 };
 

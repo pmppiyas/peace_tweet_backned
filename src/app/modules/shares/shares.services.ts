@@ -5,6 +5,7 @@ import { ICreateShareInput } from './shares.interface';
 import { kafkaProducerService } from '../../config/kafka';
 import { KAFKA_TOPIC_POST_SHARED } from '../../../kafka/events/post-shared.event';
 import { KAFKA_TOPIC_POST_CREATED } from '../../../kafka/events/post-created.event';
+import { pointsServices } from '../points/points.services';
 
 const sharesServiceInstance = new SharesService(prisma as any);
 
@@ -45,6 +46,17 @@ const createShare = async (userId: string, data: ICreateShareInput) => {
     console.warn('Kafka share event dispatch notice:', err.message);
   }
 
+  // Award share points silently
+  try {
+    const shareKey = result.shareRecord?.id || `${userId}:${data.contentType}:${data.contentId}`;
+    await pointsServices.awardTaskPoints({
+      userId,
+      taskCode: 'SHARE_CONTENT',
+      sourceKey: `SHARE_CONTENT:${shareKey}`,
+      metadata: { contentType: data.contentType, contentId: data.contentId },
+    });
+  } catch {}
+
   return result;
 };
 
@@ -66,6 +78,7 @@ const deleteShare = async (shareId: string, user: any) => {
   } catch (err: any) {
     console.warn('Cache invalidation error in deleteShare:', err.message);
   }
+
   return result;
 };
 

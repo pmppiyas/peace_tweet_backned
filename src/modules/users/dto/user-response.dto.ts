@@ -16,6 +16,12 @@ export class UserDto {
   @ApiProperty({ example: 'abdullah@example.com' })
   email: string;
 
+  @ApiPropertyOptional({ example: true })
+  emailVerified?: boolean;
+
+  @ApiPropertyOptional({ example: '2026-09-24T12:00:00.000Z' })
+  emailVerifiedAt?: Date | null;
+
   @ApiProperty({ enum: Role, example: Role.USER })
   role: Role;
 
@@ -57,6 +63,18 @@ export class UserDto {
 
   @ApiPropertyOptional({ example: 0 })
   donationCount?: number;
+
+  @ApiPropertyOptional({ example: 120 })
+  points?: number;
+
+  @ApiPropertyOptional({ example: 120 })
+  lifetimePoints?: number;
+
+  @ApiPropertyOptional({ example: 'PTUSER12' })
+  referralCode?: string | null;
+
+  @ApiPropertyOptional({ example: 3 })
+  currentStreak?: number;
 
   @ApiPropertyOptional({ example: true })
   hasPassword?: boolean;

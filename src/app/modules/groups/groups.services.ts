@@ -2,6 +2,7 @@ import { GroupsService } from '../../../modules/groups/groups.service';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
 import { ICreateGroupInput, ICreateGroupPostInput, IUpdateGroupInput } from './groups.interface';
+import { pointsServices } from '../points/points.services';
 
 const serviceInstance = new GroupsService(prisma as any);
 
@@ -25,6 +26,16 @@ const invalidateGroupCache = async (groupId?: string, slug?: string) => {
 const createGroup = async (userId: string, dto: ICreateGroupInput) => {
   const result = await serviceInstance.createGroup(userId, dto as any);
   await invalidateGroupCache(result.id, result.slug);
+  try {
+    if (result?.id) {
+      await pointsServices.awardTaskPoints({
+        userId,
+        taskCode: 'CREATE_GROUP',
+        sourceKey: `CREATE_GROUP:${result.id}`,
+        metadata: { groupId: result.id },
+      });
+    }
+  } catch {}
   return result;
 };
 
@@ -84,6 +95,16 @@ const deleteGroup = async (groupId: string, userId: string) => {
 const joinGroup = async (groupId: string, userId: string) => {
   const result = await serviceInstance.joinGroup(groupId, userId);
   await invalidateGroupCache(groupId);
+  try {
+    if ((result as any)?.status === 'MEMBER') {
+      await pointsServices.awardTaskPoints({
+        userId,
+        taskCode: 'JOIN_GROUP',
+        sourceKey: `JOIN_GROUP:${userId}:${groupId}`,
+        metadata: { groupId },
+      });
+    }
+  } catch {}
   return result;
 };
 
@@ -127,8 +148,22 @@ const getJoinRequests = (groupId: string, query: any, userId: string) =>
   );
 
 const acceptJoinRequest = async (groupId: string, requestId: string, userId: string) => {
+  const reqRecord = await prisma.groupJoinRequest.findUnique({
+    where: { id: requestId },
+    select: { userId: true },
+  });
   const result = await serviceInstance.acceptJoinRequest(groupId, requestId, userId);
   await invalidateGroupCache(groupId);
+  try {
+    if (reqRecord?.userId) {
+      await pointsServices.awardTaskPoints({
+        userId: reqRecord.userId,
+        taskCode: 'JOIN_GROUP',
+        sourceKey: `JOIN_GROUP:${reqRecord.userId}:${groupId}`,
+        metadata: { groupId },
+      });
+    }
+  } catch {}
   return result;
 };
 

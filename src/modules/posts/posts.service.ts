@@ -135,6 +135,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
         dua: {
@@ -168,6 +169,7 @@ export class PostsService {
                 name: true,
                 username: true,
                 avatarUrl: true,
+                userStatus: true,
               },
             },
             dua: {
@@ -242,6 +244,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
         dua: {
@@ -275,6 +278,7 @@ export class PostsService {
                 name: true,
                 username: true,
                 avatarUrl: true,
+                userStatus: true,
               },
             },
             dua: {
@@ -385,6 +389,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
         dua: {
@@ -418,6 +423,7 @@ export class PostsService {
                 name: true,
                 username: true,
                 avatarUrl: true,
+                userStatus: true,
               },
             },
             dua: {
@@ -595,6 +601,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
         dua: {
@@ -628,6 +635,7 @@ export class PostsService {
                 name: true,
                 username: true,
                 avatarUrl: true,
+                userStatus: true,
               },
             },
             dua: {
@@ -870,6 +878,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
         dua: {
@@ -1057,6 +1066,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
       },
@@ -1140,6 +1150,7 @@ export class PostsService {
             name: true,
             username: true,
             avatarUrl: true,
+            userStatus: true,
           },
         },
       },
@@ -1349,6 +1360,7 @@ export class PostsService {
         name: post.author?.name,
         username: post.author?.username,
         avatar: post.author?.avatarUrl || null,
+        userStatus: post.author?.userStatus || 'NON_VERIFIED',
       },
       dua: post.dua
         ? {

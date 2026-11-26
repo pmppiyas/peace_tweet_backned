@@ -18,6 +18,7 @@ import { notificationsRoutes } from '../modules/notifications/notifications.rout
 import { sharesRoutes } from '../modules/shares/shares.routes';
 import { chatRoutes } from '../modules/chat/chat.routes';
 import { feedbackRoutes } from '../modules/feedback/feedback.routes';
+import { pointsRoutes } from '../modules/points/points.routes';
 
 export const router = Router();
 
@@ -41,6 +42,7 @@ const moduleRouter = [
   { path: '/duas', route: duasRoutes },
   { path: '/search', route: searchRoutes },
   { path: '/feedback', route: feedbackRoutes },
+  { path: '/points', route: pointsRoutes },
   { path: '/', route: bookmarksRoutes },
 ];
 

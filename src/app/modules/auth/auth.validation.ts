@@ -27,6 +27,8 @@ export const registerZodSchema = z.object({
   city: z.string().max(100).optional(),
   location: z.string().max(250, 'Location cannot exceed 250 characters').optional(),
   bloodGroup: z.nativeEnum(BloodGroup).optional(),
+  invitedBy: z.string().max(40).optional(),
+  referralCode: z.string().max(40).optional(),
 });
 
 export const loginZodSchema = z.object({

@@ -1,6 +1,7 @@
 import { CommentsService } from '../../../modules/comments/comments.service';
 import { prisma } from '../../config/prisma';
 import { cacheService } from '../../config/cache';
+import { pointsServices } from '../points/points.services';
 import {
   ICreateCommentInput,
   IUpdateCommentInput,
@@ -47,7 +48,25 @@ const createComment = async (
   dto: ICreateCommentInput,
 ) => {
   const result = await serviceInstance.createComment(postId, userId, dto as any);
-  await invalidateCommentCache(result?.comment?.postId || postId);
+  const resolvedPostId = result?.comment?.postId || postId;
+  await invalidateCommentCache(resolvedPostId);
+  try {
+    const commentId = result?.comment?.id;
+    if (commentId && resolvedPostId) {
+      const post = await prisma.post.findUnique({
+        where: { id: resolvedPostId },
+        select: { authorId: true },
+      });
+      if (!post || post.authorId !== userId) {
+        await pointsServices.awardTaskPoints({
+          userId,
+          taskCode: 'COMMENT_POST',
+          sourceKey: `COMMENT_POST:${commentId}`,
+          metadata: { postId: resolvedPostId, commentId },
+        });
+      }
+    }
+  } catch {}
   return result;
 };
 

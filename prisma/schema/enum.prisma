@@ -122,7 +122,28 @@ enum NotificationType {
   FRIEND_REQUEST
   FRIEND_ACCEPT
   BLOOD_REQUEST
+  POINTS_EARNED
   SYSTEM
+}
+
+enum PointTaskFrequency {
+  ONE_TIME
+  DAILY
+  CAPPED
+  MILESTONE
+}
+
+enum PointTaskCategory {
+  PROFILE
+  SOCIAL
+  COMMUNITY
+  REFERRAL
+  DAILY
+}
+
+enum ReferralStatus {
+  REGISTERED
+  QUALIFIED
 }
 
 enum ShareContentType {
